@@ -14,6 +14,7 @@ package cromwell.filesystems.adls
 
 import java.io.ByteArrayInputStream
 import java.net.URI
+import java.nio.charset.StandardCharsets
 
 import better.files.File.OpenOptions
 import com.azure.storage.file.datalake.{DataLakeFileClient, DataLakeServiceClient}
@@ -131,10 +132,11 @@ case class AdlsPath private[adls](nioPath: NioPath,
   override def pathWithoutScheme: String = s"$fs@$storageAccount.dfs.core.windows.net/$nioPath"
 
   override def writeContent(content: String)(openOptions: OpenOptions, codec: Codec, compressPayload: Boolean)(implicit ec: ExecutionContext) = {
-    val inputStream = new ByteArrayInputStream(content.getBytes)
+    val inputStream = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8))
     val fileSize = content.length
     client.append(inputStream, 0, fileSize)
     client.flush(fileSize)
+    inputStream.close()
     this
   }
 }
