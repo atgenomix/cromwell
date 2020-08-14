@@ -17,7 +17,7 @@ import com.azure.storage.file.datalake.DataLakeServiceClient
 import com.azure.storage.file.datalake.DataLakeServiceClientBuilder
 
 object AdlsStorage {
-  val DefaultConfiguration = {}
+  // val DefaultConfiguration = {}
 
   def adlsClient(credential: ClientSecretCredential, account: String): DataLakeServiceClient = {
     val endpoint = "https://" + account + ".dfs.core.windows.net"
