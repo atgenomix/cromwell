@@ -4,6 +4,11 @@ object Dependencies {
   private val akkaHttpCirceIntegrationV = "1.34.0"
   private val akkaHttpV = "10.1.12"
   val akkaV = "2.6.8" // When updating: Do we still need the merge "fix" from https://github.com/broadinstitute/cromwell/pull/5776 (not private because used in Merging.scala)
+  private val azureAdlsV = "12.1.2"
+  private val azureIdentityV = "1.1.0"
+  private val akkaHttpCirceIntegrationV = "1.29.1"
+  private val akkaHttpV = "10.1.9"
+  private val akkaV = "2.5.23"
   private val aliyunBcsV = "6.2.4"
   private val aliyunCoreV = "4.5.7"
   private val aliyunCrV = "4.1.1"
@@ -380,6 +385,16 @@ object Dependencies {
     "com.typesafe.akka" %% "akka-http-spray-json" % akkaHttpV
   )
 
+  val adlsFileSystemDependencies = List(
+    "com.azure" % "azure-storage-file-datalake" % azureAdlsV,
+    "com.google.oauth-client" % "google-oauth-client" % googleOauthClientV,
+    "com.google.oauth-client" % "google-oauth-client-java6" % googleOauthClientV
+  )
+
+  private val azureCloudDependencies = adlsFileSystemDependencies ++ List(
+    "com.azure" % "azure-identity" % azureIdentityV
+  )
+
   private val dbmsDependencies = List(
     "org.hsqldb" % "hsqldb" % hsqldbV,
     "org.mariadb.jdbc" % "mariadb-java-client" % mariadbV,
@@ -400,7 +415,7 @@ object Dependencies {
     "com.lihaoyi" %% "pprint" % "0.6.0",
   ) ++ catsDependencies ++ configDependencies ++ slf4jFacadeDependencies ++ refinedTypeDependenciesList
 
-  val cloudSupportDependencies = googleApiClientDependencies ++ googleCloudDependencies ++ betterFilesDependencies ++ awsCloudDependencies
+  val cloudSupportDependencies = googleApiClientDependencies ++ googleCloudDependencies ++ betterFilesDependencies ++ awsCloudDependencies ++ azureCloudDependencies
 
   val databaseSqlDependencies = List(
     "commons-io" % "commons-io" % commonsIoV,
