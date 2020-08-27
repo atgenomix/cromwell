@@ -296,6 +296,7 @@ lazy val centaurCwlRunner = project
   .dependsOn(centaur)
   .dependsOn(gcsFileSystem)
   .dependsOn(ftpFileSystem)
+  .dependsOn(adlsFileSystem)
 
 lazy val womtool = project
   .withExecutableSettings("womtool", womtoolDependencies)

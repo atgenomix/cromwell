@@ -5,6 +5,7 @@ object Dependencies {
   private val akkaHttpV = "10.1.12"
   val akkaV = "2.6.8" // When updating: Do we still need the merge "fix" from https://github.com/broadinstitute/cromwell/pull/5776 (not private because used in Merging.scala)
   private val azureAdlsV = "12.1.2"
+  private val azureBlobNioV = "12.0.0-beta.1"
   private val azureIdentityV = "1.1.0"
   private val akkaHttpCirceIntegrationV = "1.29.1"
   private val akkaHttpV = "10.1.9"
@@ -387,6 +388,7 @@ object Dependencies {
 
   val adlsFileSystemDependencies = List(
     "com.azure" % "azure-storage-file-datalake" % azureAdlsV,
+    "com.azure" % "azure-storage-blob-nio" % azureBlobNioV,
     "com.google.oauth-client" % "google-oauth-client" % googleOauthClientV,
     "com.google.oauth-client" % "google-oauth-client-java6" % googleOauthClientV
   )

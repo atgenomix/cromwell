@@ -1,0 +1,128 @@
+package nio
+
+import java.io.{IOException, InputStream, OutputStream}
+import java.net.URI
+import java.nio.channels.{FileChannel, SeekableByteChannel}
+import java.nio.file.attribute.{BasicFileAttributes, FileAttribute, FileAttributeView}
+import java.nio.file.spi.FileSystemProvider
+import java.nio.file.{AccessMode, CopyOption, DirectoryStream, FileStore, FileSystem, FileSystemAlreadyExistsException, FileSystemNotFoundException, LinkOption, OpenOption, Path}
+import java.util
+
+import com.azure.core.util.logging.ClientLogger
+import com.azure.storage.blob.nio.AzureFileSystem
+
+import scala.collection.concurrent.TrieMap
+import scala.util.matching.Regex
+
+object AzureGen2FileSystemProvider {
+  /**
+    * A helper for setting the HTTP properties when creating a directory.
+    */
+  val CONTENT_TYPE = "Content-Type"
+
+  val CONTENT_DISPOSITION = "Content-Disposition"
+
+  val CONTENT_LANGUAGE = "Content-Language"
+
+  val CONTENT_ENCODING = "Content-Encoding"
+
+  val CONTENT_MD5 = "Content-MD5"
+
+  val CACHE_CONTROL = "Cache-Control"
+
+  private val ACCOUNT_QUERY_KEY = "account"
+  private val COPY_TIMEOUT_SECONDS = 30
+}
+
+final case class AzureGen2FileSystemProvider() extends FileSystemProvider {
+  private val logger = new ClientLogger(classOf[AzureGen2FileSystemProvider])
+  private val openFileSystems = TrieMap[String, FileSystem]()
+
+  override def getScheme = "abfs"
+  def getTlsScheme = "abfss"
+
+  def pattern: Regex = "(abfs[s]?)://([0-9a-zA-Z-_]+)@([0-9a-zA-Z-_]+).dfs.core.windows.net(.+)".r
+
+  @throws(classOf[FileSystemAlreadyExistsException])
+  @throws(classOf[IOException])
+  @throws(classOf[IllegalArgumentException])
+  override def newFileSystem(uri: URI, env: util.Map[String, _]): FileSystem = {
+    extractFileSystemName(uri) match {
+      case Right(fs) =>
+        this.openFileSystems.get(fs) match {
+          case Some(_) =>
+            throw LoggingUtility.logError(this.logger, new FileSystemAlreadyExistsException("Name: " + fs))
+          case None =>
+            val afs = new AzureFileSystem(this, fs, env)
+            this.openFileSystems.put(fs, afs).get
+        }
+      case Left(ex) => throw ex
+    }
+  }
+
+  @throws(classOf[FileSystemNotFoundException])
+  @throws(classOf[IllegalArgumentException])
+  override def getFileSystem(uri: URI): FileSystem = {
+    extractFileSystemName(uri) match {
+      case Left(ex) => throw ex
+      case Right(fs) => this.openFileSystems(fs)
+    }
+  }
+
+  override def getPath(uri: URI): Path = { getFileSystem(uri).getPath(uri.getPath) }
+
+  override def newInputStream(path: Path, options: OpenOption*): InputStream = ???
+  override def newOutputStream(path: Path, options: OpenOption*): OutputStream = ???
+  override def newFileChannel(path: Path, options: util.Set[_ <: OpenOption], attrs: FileAttribute[_]*): FileChannel = ???
+  override def newByteChannel(path: Path, options: util.Set[_ <: OpenOption], attrs: FileAttribute[_]*): SeekableByteChannel = ???
+  override def newDirectoryStream(dir: Path, filter: DirectoryStream.Filter[_ >: Path]): DirectoryStream[Path] = ???
+  override def createDirectory(dir: Path, attrs: FileAttribute[_]*): Unit = ???
+  override def delete(path: Path): Unit = ???
+  override def deleteIfExists(path: Path): Boolean = ???
+  override def copy(source: Path, target: Path, options: CopyOption*): Unit = ???
+  override def move(source: Path, target: Path, options: CopyOption*): Unit = ???
+  override def isSameFile(path: Path, path2: Path): Boolean = ???
+  override def isHidden(path: Path): Boolean = ???
+  override def getFileStore(path: Path): FileStore = ???
+  override def checkAccess(path: Path, modes: AccessMode*): Unit = ???
+  override def getFileAttributeView[V <: FileAttributeView](path: Path, `type`: Class[V], options: LinkOption*): V = ???
+  override def readAttributes(path: Path, attributes: String, options: LinkOption*): util.Map[String, AnyRef] = ???
+  override def readAttributes[A <: BasicFileAttributes](path: Path, `type`: Class[A], options: LinkOption*): A = ???
+  override def setAttribute(path: Path, attribute: String, value: scala.Any, options: LinkOption*): Unit = ???
+
+  def closeFileSystem(fileSystemName: String): Unit = {
+    this.openFileSystems.remove(fileSystemName)
+  }
+
+  private def extractFileSystemName(uri: URI): Either[Throwable, String] = {
+    extract(uri, 2)
+  }
+
+  private def extractAccountName(uri: URI): Either[Throwable, String] = {
+    extract(uri, 3)
+  }
+
+  private def extractPathName(uri: URI): Either[Throwable, String] = {
+    extract(uri, 4).map { i =>
+      val idx = i.lastIndexOf("/")
+      i.take(idx)
+    }
+  }
+
+  private def extractFileName(uri: URI): Either[Throwable, String] = {
+    extract(uri, 4).map(_.split("/").last)
+  }
+
+  private def extract(uri: URI, idx: Int): Either[Throwable, String] = {
+    if (uri.getScheme != this.getScheme && uri.getScheme != this.getTlsScheme) {
+      Left(LoggingUtility.logError(this.logger, new IllegalArgumentException("URI scheme does not match this provider")))
+    }
+
+    this.pattern
+      .findFirstMatchIn(uri.toString)
+      .map(_.group(idx)) match {
+      case Some(i) => Right(i)
+      case None => Left(LoggingUtility.logError(this.logger, new IllegalArgumentException("URI invalid format")))
+    }
+  }
+}
