@@ -133,5 +133,5 @@ case class AzureGen2FileStore(parentFileSystem: AzureGen2FileSystem, fileSystemN
     * @throws IOException                   never
     */
   @throws[IOException]
-  override def getAttribute(s: String) = getFileStoreAttributeView(classOf[AzureGen2FileStoreAttributeView]).getAttribute(s)
+  override def getAttribute(s: String):String = getFileStoreAttributeView(classOf[AzureGen2FileStoreAttributeView]).getAttribute(s)
 }
