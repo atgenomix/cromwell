@@ -49,14 +49,14 @@ final case class AzureGen2FileSystemProvider(clientId: String,
   @throws(classOf[IOException])
   @throws(classOf[IllegalArgumentException])
   override def newFileSystem(uri: URI, env: util.Map[String, _]): FileSystem = {
-    extractFileSystemName(uri) match {
-      case Right(fs) =>
-        this.openFileSystems.get(fs) match {
+    extractAccountName(uri) match {
+      case Right(accountName) =>
+        this.openFileSystems.get(accountName) match {
           case Some(_) =>
-            throw LoggingUtility.logError(this.logger, new FileSystemAlreadyExistsException("Name: " + fs))
+            throw LoggingUtility.logError(this.logger, new FileSystemAlreadyExistsException("Name: " + accountName))
           case None =>
-            val afs = new AzureFileSystem(this, fs, env)
-            this.openFileSystems.put(fs, afs).get
+            val afs = new AzureGen2FileSystem(this, accountName, clientId, clientSecret, tenantId, env.asScala.toMap)
+            this.openFileSystems.put(accountName, afs).get
         }
       case Left(ex) => throw ex
     }
@@ -65,7 +65,7 @@ final case class AzureGen2FileSystemProvider(clientId: String,
   @throws(classOf[FileSystemNotFoundException])
   @throws(classOf[IllegalArgumentException])
   override def getFileSystem(uri: URI): FileSystem = {
-    extractFileSystemName(uri) match {
+    extractAccountName(uri) match {
       case Left(ex) => throw ex
       case Right(fs) => this.openFileSystems(fs)
     }
