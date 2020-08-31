@@ -5,20 +5,24 @@ import java.nio.file.FileStore
 import java.nio.file.attribute.{FileAttributeView, FileStoreAttributeView}
 
 import com.azure.core.util.logging.ClientLogger
+import com.azure.storage.file.datalake.DataLakeFileSystemClient
 
 import scala.collection.JavaConverters._
 
 object AzureGen2FileStore {
+  private val logger = new ClientLogger(classOf[AzureGen2FileStore])
   private val AZURE_FILE_STORE_TYPE = "AzureBlobContainer"
+
+  def apply(parentFileSystem: AzureGen2FileSystem, fileSystemName: String): AzureGen2FileStore = {
+    val fileSystemClient = parentFileSystem.getDataLakeServiceClient.getFileSystemClient(fileSystemName)
+    if (!parentFileSystem.getDataLakeServiceClient.listFileSystems().asScala.exists(_.getName == fileSystemName))
+      fileSystemClient.create()
+
+    AzureGen2FileStore(parentFileSystem, fileSystemName, fileSystemClient)
+  }
 }
 
-case class AzureGen2FileStore(parentFileSystem: AzureGen2FileSystem, fileSystemName: String) extends FileStore {
-  private val logger = new ClientLogger(classOf[AzureGen2FileStore])
-
-  private val fileSystemClient = parentFileSystem.getDataLakeServiceClient.getFileSystemClient(fileSystemName)
-  if (!parentFileSystem.getDataLakeServiceClient.listFileSystems().asScala.exists(_.getName == fileSystemName))
-    fileSystemClient.create()
-
+case class AzureGen2FileStore(parentFileSystem: AzureGen2FileSystem, fileSystemName: String, fileSystemClient: DataLakeFileSystemClient) extends FileStore {
   /**
     * Returns the name of the container that underlies this file store.
     *
@@ -134,4 +138,6 @@ case class AzureGen2FileStore(parentFileSystem: AzureGen2FileSystem, fileSystemN
     */
   @throws[IOException]
   override def getAttribute(s: String):String = getFileStoreAttributeView(classOf[AzureGen2FileStoreAttributeView]).getAttribute(s)
+
+  def getFileSystemClient: DataLakeFileSystemClient = this.fileSystemClient
 }
