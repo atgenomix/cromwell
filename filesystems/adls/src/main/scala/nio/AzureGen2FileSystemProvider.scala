@@ -1,16 +1,16 @@
 package nio
 
-import java.io.{IOException, InputStream, OutputStream}
+import java.io.IOException
 import java.net.URI
 import java.nio.channels.{FileChannel, SeekableByteChannel}
+import java.nio.file._
 import java.nio.file.attribute.{BasicFileAttributes, FileAttribute, FileAttributeView}
 import java.nio.file.spi.FileSystemProvider
-import java.nio.file.{AccessMode, CopyOption, DirectoryStream, FileStore, FileSystem, FileSystemAlreadyExistsException, FileSystemNotFoundException, LinkOption, OpenOption, Path}
 import java.util
 
 import com.azure.core.util.logging.ClientLogger
-import com.azure.storage.blob.nio.AzureFileSystem
 
+import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
 import scala.util.matching.Regex
 
@@ -34,7 +34,9 @@ object AzureGen2FileSystemProvider {
   private val COPY_TIMEOUT_SECONDS = 30
 }
 
-final case class AzureGen2FileSystemProvider() extends FileSystemProvider {
+final case class AzureGen2FileSystemProvider(clientId: String,
+                                             clientSecret: String,
+                                             tenantId: String) extends FileSystemProvider {
   private val logger = new ClientLogger(classOf[AzureGen2FileSystemProvider])
   private val openFileSystems = TrieMap[String, FileSystem]()
 
@@ -71,10 +73,20 @@ final case class AzureGen2FileSystemProvider() extends FileSystemProvider {
 
   override def getPath(uri: URI): Path = { getFileSystem(uri).getPath(uri.getPath) }
 
-  override def newInputStream(path: Path, options: OpenOption*): InputStream = ???
-  override def newOutputStream(path: Path, options: OpenOption*): OutputStream = ???
-  override def newFileChannel(path: Path, options: util.Set[_ <: OpenOption], attrs: FileAttribute[_]*): FileChannel = ???
-  override def newByteChannel(path: Path, options: util.Set[_ <: OpenOption], attrs: FileAttribute[_]*): SeekableByteChannel = ???
+//  override def newInputStream(path: Path, options: OpenOption*): InputStream = ???
+//  override def newOutputStream(path: Path, options: OpenOption*): OutputStream = ???
+
+  override def newFileChannel(path: Path, options: util.Set[_ <: OpenOption], attrs: FileAttribute[_]*): FileChannel = {
+
+    val azurePath: AzureGen2Path = path.asInstanceOf[AzureGen2Path]
+    AzureGen2FileChannel(azurePath, options.asScala.toSet)
+  }
+
+  override def newByteChannel(path: Path, options: util.Set[_ <: OpenOption], attrs: FileAttribute[_]*): SeekableByteChannel = {
+    val azurePath: AzureGen2Path = path.asInstanceOf[AzureGen2Path]
+    AzureGen2SeekableByteChannel(azurePath, options.asScala.toSet)
+  }
+
   override def newDirectoryStream(dir: Path, filter: DirectoryStream.Filter[_ >: Path]): DirectoryStream[Path] = ???
   override def createDirectory(dir: Path, attrs: FileAttribute[_]*): Unit = ???
   override def delete(path: Path): Unit = ???
