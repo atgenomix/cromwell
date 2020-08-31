@@ -535,7 +535,8 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: Stri
   We don't store the file client because unlike other types in this package, a Path does not actually indicate the
   existence or even validity of any remote resource. It is purely a representation of a path. Therefore, we do not
   construct the client or perform any validation until it is requested.
-   */ @throws[IOException]
+   */
+  @throws[IOException]
   private[nio] def toFileClient = { // Converting to an absolute path ensures there is a container to operate on even if it is the default.
     // Normalizing ensures the path is clean.
     val root = this.normalize().toAbsolutePath.getRoot
@@ -547,6 +548,17 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: Stri
     val blobName = this.withoutRoot
     if (blobName.isEmpty) throw new IOException("Cannot get a blob client to a path that only contains the root or is an empty path")
     fileSystemClient.getFileClient(blobName)
+  }
+
+  @throws[IOException]
+  private[nio] def toFileSystemClient = { // Converting to an absolute path ensures there is a container to operate on even if it is the default.
+    // Normalizing ensures the path is clean.
+    val root = this.normalize().toAbsolutePath.getRoot
+    if (root == null)
+      throw LoggingUtility.logError(AzureGen2Path.logger, new IllegalStateException("Root should never be null after calling toAbsolutePath."))
+
+    val fileStoreName = this.rootToFileStore(root.toString)
+    this.parentFileSystem.getFileStore(fileStoreName).asInstanceOf[AzureGen2FileStore].getFileSystemClient
   }
 
   /**

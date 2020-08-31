@@ -77,7 +77,6 @@ final case class AzureGen2FileSystemProvider(clientId: String,
 //  override def newOutputStream(path: Path, options: OpenOption*): OutputStream = ???
 
   override def newFileChannel(path: Path, options: util.Set[_ <: OpenOption], attrs: FileAttribute[_]*): FileChannel = {
-
     val azurePath: AzureGen2Path = path.asInstanceOf[AzureGen2Path]
     AzureGen2FileChannel(azurePath, options.asScala.toSet)
   }
@@ -87,7 +86,18 @@ final case class AzureGen2FileSystemProvider(clientId: String,
     AzureGen2SeekableByteChannel(azurePath, options.asScala.toSet)
   }
 
-  override def newDirectoryStream(dir: Path, filter: DirectoryStream.Filter[_ >: Path]): DirectoryStream[Path] = ???
+  override def newDirectoryStream(dir: Path, filter: DirectoryStream.Filter[_ >: Path]): DirectoryStream[Path] = {
+    val azureDir: AzureGen2Path = dir.asInstanceOf[AzureGen2Path]
+    new DirectoryStream[Path]() {
+      @throws[IOException]
+      override def close(): Unit = {
+        // nothing to do here
+      }
+
+      override def iterator: util.Iterator[Path] = AzureGen2Iterator(azureDir)
+    }
+  }
+
   override def createDirectory(dir: Path, attrs: FileAttribute[_]*): Unit = ???
   override def delete(path: Path): Unit = ???
   override def deleteIfExists(path: Path): Boolean = ???
