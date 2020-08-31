@@ -326,9 +326,10 @@ case class AzureGen2FileSystem(
 
   @throws[IOException]
   private[nio] def getFileStore(name: String) = {
-    val store = this.fileStores.get(name)
-    if (store == null) throw LoggingUtility.logError(logger, new IOException("Invalid file store: " + name))
-    store
+    this.fileStores.get(name) match {
+      case Some(store) => store
+      case None => throw LoggingUtility.logError(logger, new IOException("Invalid file store: " + name))
+    }
   }
 
   private[nio] def getBlockSize = this.blockSize
