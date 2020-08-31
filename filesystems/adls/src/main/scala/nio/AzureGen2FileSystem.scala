@@ -288,7 +288,9 @@ case class AzureGen2FileSystem(
     * @param more  additional strings to be joined to form the path string
     * @throws InvalidPathException if the path string cannot be converted.
     */
-  override def getPath(first: String, more: String*) = new AzurePath(this, first, more)
+  override def getPath(first: String, more: String*) = {
+    new AzureGen2Path(this, more.foldLeft(first)(_ ++ _))
+  }
 
   /**
     * Unsupported.

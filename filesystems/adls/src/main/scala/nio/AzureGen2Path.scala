@@ -104,9 +104,10 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: Stri
     */
   override def getParent: Path = {
     /*
-           If this path only has one element or is empty, there is no parent. Note the root is included in the parent, so
-           we don't use getNameCount here.
-            */ val elements = this.splitToElements
+     * If this path only has one element or is empty, there is no parent. Note the root is included in the parent, so
+     * we don't use getNameCount here.
+     */
+    val elements = this.splitToElements
     if (elements.length == 1 || elements.length == 0)
       None.orNull
     else
