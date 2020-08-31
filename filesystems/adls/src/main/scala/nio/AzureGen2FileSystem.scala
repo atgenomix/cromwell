@@ -9,7 +9,8 @@ import java.util
 import com.azure.core.http.policy.HttpLogDetailLevel
 import com.azure.core.util.logging.ClientLogger
 import com.azure.identity.ClientSecretCredentialBuilder
-import com.azure.storage.blob.nio.{AzureBasicFileAttributeView, AzureBlobFileAttributeView, AzurePath}
+import com.azure.storage.blob.nio.{AzureBasicFileAttributeView, AzureBlobFileAttributeView}
+import com.azure.storage.common.StorageSharedKeyCredential
 import com.azure.storage.common.policy.{RequestRetryOptions, RetryPolicyType}
 import com.azure.storage.file.datalake.{DataLakeServiceClient, DataLakeServiceClientBuilder}
 
@@ -79,14 +80,67 @@ object AzureGen2FileSystem {
   private[nio] val ROOT_DIR_SUFFIX = ":"
 
   private val AZURE_STORAGE_GEN2_ENDPOINT_TEMPLATE = "%s://%s.dfs.core.windows.net"
+
+  private def getRetryOptions(config: Map[String, _]) = {
+    new RequestRetryOptions(
+      config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_RETRY_POLICY_TYPE, RetryPolicyType.EXPONENTIAL).asInstanceOf[RetryPolicyType],
+      config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_MAX_TRIES, 4).asInstanceOf[Int],
+      config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_TRY_TIMEOUT, 60).asInstanceOf[Int],
+      config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_RETRY_DELAY_IN_MS, 4L).asInstanceOf[Long],
+      config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_MAX_RETRY_DELAY_IN_MS, 120L).asInstanceOf[Long],
+      config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_SECONDARY_HOST, "").asInstanceOf[String])
+  }
+
+  def apply(parentFileSystemProvider: AzureGen2FileSystemProvider,
+            accountName: String,
+            accountKey: String,
+            config: Map[String, _]): AzureGen2FileSystem = {
+    val endpoint = "https://" + accountName + ".dfs.core.windows.net"
+    val sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey)
+    val retryOptions = getRetryOptions(config)
+    val logLevel = config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_HTTP_LOG_DETAIL_LEVEL, HttpLogDetailLevel.BASIC)
+      .asInstanceOf[HttpLogDetailLevel]
+
+    val client = new DataLakeServiceClientBuilder()
+      .credential(sharedKeyCredential)
+      .endpoint(endpoint)
+      .retryOptions(retryOptions)
+      .httpLogOptions(DataLakeServiceClientBuilder.getDefaultHttpLogOptions.setLogLevel(logLevel))
+      .buildClient()
+
+    AzureGen2FileSystem(parentFileSystemProvider, client, config)
+  }
+
+  def apply(parentFileSystemProvider: AzureGen2FileSystemProvider,
+            accountName: String,
+            clientId: String,
+            clientSecret: String,
+            tenantId: String,
+            config: Map[String, _]): AzureGen2FileSystem = {
+    val endpoint = "https://" + accountName + ".dfs.core.windows.net"
+    val credential = new ClientSecretCredentialBuilder()
+      .clientId(clientId)
+      .clientSecret(clientSecret)
+      .tenantId(tenantId)
+      .build()
+    val retryOptions = getRetryOptions(config)
+    val logLevel = config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_HTTP_LOG_DETAIL_LEVEL, HttpLogDetailLevel.BASIC)
+      .asInstanceOf[HttpLogDetailLevel]
+
+    val client = new DataLakeServiceClientBuilder()
+      .credential(credential)
+      .endpoint(endpoint)
+      .retryOptions(retryOptions)
+      .httpLogOptions(DataLakeServiceClientBuilder.getDefaultHttpLogOptions.setLogLevel(logLevel))
+      .buildClient()
+
+    AzureGen2FileSystem(parentFileSystemProvider, client, config)
+  }
 }
 
 case class AzureGen2FileSystem(
                                 parentFileSystemProvider: AzureGen2FileSystemProvider,
-                                accountName: String,
-                                clientId: String,
-                                clientSecret: String,
-                                tenantId: String,
+                                dataLakeServiceClient: DataLakeServiceClient,
                                 config: Map[String, _]) extends FileSystem {
   private val logger = new ClientLogger(classOf[AzureGen2FileSystem])
 
@@ -100,7 +154,6 @@ case class AzureGen2FileSystem(
       logger,
       new IllegalArgumentException("There was an error parsing the " + "configurations map. Please ensure all fields are set to a legal value of the correct type."))
 
-  private val dataLakeServiceClient = buildDataLakeServiceClient(accountName, clientId, clientSecret, tenantId, config)
   private val blockSize = config.get(AzureGen2FileSystem.AZURE_STORAGE_UPLOAD_BLOCK_SIZE).asInstanceOf[Long]
   private val putBlobThreshold = config.get(AzureGen2FileSystem.AZURE_STORAGE_PUT_BLOB_THRESHOLD).asInstanceOf[Long]
   private val maxConcurrencyPerRequest = config.get(AzureGen2FileSystem.AZURE_STORAGE_MAX_CONCURRENCY_PER_REQUEST).asInstanceOf[Integer]
@@ -266,30 +319,6 @@ case class AzureGen2FileSystem(
   def getFileSystemName: String = this.dataLakeServiceClient.getAccountName
 
   def getDataLakeServiceClient: DataLakeServiceClient = this.dataLakeServiceClient
-
-  private def buildDataLakeServiceClient(accountName: String, clientId: String, clientSecret: String, tenantId: String, config: Map[String, _]) = {
-    val endpoint = "https://" + accountName + ".dfs.core.windows.net"
-    val credential = new ClientSecretCredentialBuilder()
-      .clientId(clientId)
-      .clientSecret(clientSecret)
-      .tenantId(tenantId)
-      .build()
-    val retryOptions = new RequestRetryOptions(
-      config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_RETRY_POLICY_TYPE, RetryPolicyType.EXPONENTIAL).asInstanceOf[RetryPolicyType],
-      config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_MAX_TRIES, 4).asInstanceOf[Int],
-      config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_TRY_TIMEOUT, 60).asInstanceOf[Int],
-      config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_RETRY_DELAY_IN_MS, 4L).asInstanceOf[Long],
-      config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_MAX_RETRY_DELAY_IN_MS, 120L).asInstanceOf[Long],
-      config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_SECONDARY_HOST, "").asInstanceOf[String])
-    val logLevel = config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_HTTP_LOG_DETAIL_LEVEL, HttpLogDetailLevel.BASIC).asInstanceOf[HttpLogDetailLevel]
-
-    new DataLakeServiceClientBuilder()
-      .credential(credential)
-      .endpoint(endpoint)
-      .retryOptions(retryOptions)
-      .httpLogOptions(DataLakeServiceClientBuilder.getDefaultHttpLogOptions.setLogLevel(logLevel))
-      .buildClient()
-  }
 
   @throws[IOException]
   private def initializeFileStores(config: Map[String, _]): Map[String, FileStore] = {
