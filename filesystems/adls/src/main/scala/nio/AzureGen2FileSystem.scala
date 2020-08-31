@@ -4,13 +4,14 @@ import java.io.IOException
 import java.nio.file.attribute.BasicFileAttributeView
 import java.nio.file.spi.FileSystemProvider
 import java.nio.file.{FileStore, FileSystem, InvalidPathException, Path}
+import java.util
 
 import com.azure.core.http.policy.HttpLogDetailLevel
 import com.azure.core.util.logging.ClientLogger
 import com.azure.identity.ClientSecretCredentialBuilder
 import com.azure.storage.blob.nio.{AzureBasicFileAttributeView, AzureBlobFileAttributeView, AzurePath}
 import com.azure.storage.common.policy.{RequestRetryOptions, RetryPolicyType}
-import com.azure.storage.file.datalake.DataLakeServiceClientBuilder
+import com.azure.storage.file.datalake.{DataLakeServiceClient, DataLakeServiceClientBuilder}
 
 import scala.collection.JavaConverters._
 
@@ -104,7 +105,7 @@ case class AzureGen2FileSystem(
   private val putBlobThreshold = config.get(AzureGen2FileSystem.AZURE_STORAGE_PUT_BLOB_THRESHOLD).asInstanceOf[Long]
   private val maxConcurrencyPerRequest = config.get(AzureGen2FileSystem.AZURE_STORAGE_MAX_CONCURRENCY_PER_REQUEST).asInstanceOf[Integer]
   private val downloadResumeRetries = config.get(AzureGen2FileSystem.AZURE_STORAGE_DOWNLOAD_RESUME_RETRIES).asInstanceOf[Integer]
-  private var defaultFileStore: FileStore = null
+  private var defaultFileStore: FileStore = _
   private val fileStores: Map[String, FileStore] = initializeFileStores(config)
   private var closed = false
 
@@ -213,7 +214,7 @@ case class AzureGen2FileSystem(
     * <li>{@link AzureBasicFileAttributeView}</li>
     * </ul>
     */
-  override def supportedFileAttributeViews = AzureGen2FileSystem.SUPPORTED_ATTRIBUTE_VIEWS.values.toSet.asJava
+  override def supportedFileAttributeViews: util.Set[String] = AzureGen2FileSystem.SUPPORTED_ATTRIBUTE_VIEWS.values.toSet.asJava
 
   /**
     * Converts a path string, or a sequence of more that when joined form a path string, to a Path.
@@ -262,9 +263,9 @@ case class AzureGen2FileSystem(
   @throws[IOException]
   override def newWatchService = throw LoggingUtility.logError(logger, new UnsupportedOperationException)
 
-  def getFileSystemName = this.dataLakeServiceClient.getAccountName
+  def getFileSystemName: String = this.dataLakeServiceClient.getAccountName
 
-  def getDataLakeServiceClient = this.dataLakeServiceClient
+  def getDataLakeServiceClient: DataLakeServiceClient = this.dataLakeServiceClient
 
   private def buildDataLakeServiceClient(accountName: String, clientId: String, clientSecret: String, tenantId: String, config: Map[String, _]) = {
     val endpoint = "https://" + accountName + ".dfs.core.windows.net"
@@ -297,7 +298,7 @@ case class AzureGen2FileSystem(
 
     fileStoreNames match {
       case Some(names) => names.split(",").foreach { n =>
-        val fs: FileStore = new AzureGen2FileStore(this, n)
+        val fs: FileStore = AzureGen2FileStore(this, n)
         if (this.defaultFileStore == null)
           this.defaultFileStore = fs
         fileStores += (n -> fs)

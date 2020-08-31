@@ -9,5 +9,5 @@ object  AzureGen2FileStoreAttributeView {
 case class AzureGen2FileStoreAttributeView(fileStoreName: String) extends FileStoreAttributeView {
   override def name: String = AzureGen2FileStoreAttributeView.ATTRIBUTE_VIEW_NAME
 
-  def getAttribute(attribute: String) = fileStoreName
+  def getAttribute(attribute: String): String = fileStoreName
 }
