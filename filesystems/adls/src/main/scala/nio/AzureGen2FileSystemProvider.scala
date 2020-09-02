@@ -9,6 +9,7 @@ import java.nio.file.spi.FileSystemProvider
 import java.util
 
 import com.azure.core.util.logging.ClientLogger
+import com.azure.storage.file.datalake.models.DataLakeStorageException
 import com.azure.storage.file.datalake.{DataLakeDirectoryClient, DataLakeFileClient, DataLakePathClient}
 
 import scala.collection.JavaConverters._
@@ -151,17 +152,16 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
     val fullPath = extractFullPathName(path.toUri)
     val client = getClient(path)
 
-    if (client.exists()) {
-      Try(client.delete()) match {
-        case Success(_) => ()
-        case Failure(ex) => throw LoggingUtility.logError(logger, ex)
-      }
-    } else {
-      throw LoggingUtility.logError(logger, new NoSuchFileException(fullPath))
+    Try(client.delete()) match {
+      case Success(_) => ()
+      case Failure(ex: DataLakeStorageException) =>
+        if (ex.getStatusCode == 404)
+          throw LoggingUtility.logError(logger, new NoSuchFileException(fullPath))
+        else
+          throw LoggingUtility.logError(logger, ex)
     }
   }
 
-  override def deleteIfExists(path: Path): Boolean = ???
   override def copy(source: Path, target: Path, options: CopyOption*): Unit = ???
   override def move(source: Path, target: Path, options: CopyOption*): Unit = ???
 
