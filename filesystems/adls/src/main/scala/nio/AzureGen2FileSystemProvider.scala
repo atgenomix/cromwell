@@ -172,7 +172,14 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
     }
   }
 
-  override def copy(source: Path, target: Path, options: CopyOption*): Unit = ???
+  override def copy(source: Path, target: Path, options: CopyOption*): Unit = {
+    val tmpFileName = source.getFileName.toString + ".tmp"
+    val tmpPath: Path = source.getParent.resolve(tmpFileName)
+
+    move(source, tmpPath, options: _*)
+    move(tmpPath, target, options: _*)
+    delete(tmpPath)
+  }
 
   override def move(source: Path, target: Path, options: CopyOption*): Unit = {
     val dstFileSystem = extractFileSystemName(target.toUri)
