@@ -124,10 +124,28 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
       override def iterator: util.Iterator[Path] = AzureGen2Iterator(azureGen2Dir)
     }
   }
+
+  override def createDirectory(dir: Path, attrs: FileAttribute[_]*): Unit = {
+    val azureGen2Dir = toAzureGen2Path(dir)
+    val fullPath = extractFullPathName(dir.toUri)
+
+    fullPath match {
+      case Left(ex) => throw ex
+      case Right(p) =>
+        val parentDir = azureGen2Dir.getParent.toUri.toString
+        val parentDirClient = azureGen2Dir.toFileSystemClient.getDirectoryClient(parentDir)
+        if (parentDirClient.exists()) {
+          val subDirClient = parentDirClient.getSubdirectoryClient(p)
+          subDirClient.setMetadata(attrs.map(i => i.name() -> i.value().toString).toMap.asJava)
+          subDirClient.create()
+        } else {
+          throw LoggingUtility.logError(logger, new IOException("Parent directory does not exist for path: " + parentDir))
+        }
+    }
+  }
     }
   }
 
-  override def createDirectory(dir: Path, attrs: FileAttribute[_]*): Unit = ???
   override def delete(path: Path): Unit = ???
   override def deleteIfExists(path: Path): Boolean = ???
   override def copy(source: Path, target: Path, options: CopyOption*): Unit = ???
@@ -162,6 +180,10 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
 
   private def extractFileName(uri: URI): Either[Throwable, String] = {
     extract(uri, 4).map(_.split("/").last)
+  }
+
+  private def extractFullPathName(uri: URI): Either[Throwable, String] = {
+    extract(uri, 4)
   }
 
   private def extract(uri: URI, idx: Int): Either[Throwable, String] = {
