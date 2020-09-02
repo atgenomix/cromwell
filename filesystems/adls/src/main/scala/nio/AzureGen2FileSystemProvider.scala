@@ -9,11 +9,24 @@ import java.nio.file.spi.FileSystemProvider
 import java.util
 
 import com.azure.core.util.logging.ClientLogger
+import com.azure.storage.file.datalake.{DataLakeDirectoryClient, DataLakeFileClient, DataLakePathClient}
 
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
 import scala.util.{Failure, Success, Try}
 import scala.util.matching.Regex
+
+trait AzureGen2Client extends DataLakePathClient {
+  abstract def delete()
+}
+
+case class AzureGen2DirClient(client: DataLakeDirectoryClient) extends AzureGen2Client {
+  override def delete(): Unit = client.delete()
+}
+
+case class AzureGen2FileClient(client: DataLakeFileClient) extends AzureGen2Client {
+  override def delete(): Unit = client.delete()
+}
 
 object AzureGen2FileSystemProvider {
   /**
@@ -135,12 +148,11 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
   }
 
   override def delete(path: Path): Unit = {
-    val azureGen2Path = toAzureGen2Path(path)
     val fullPath = extractFullPathName(path.toUri)
-    val dirClient = azureGen2Path.toFileSystemClient.getDirectoryClient(fullPath)
+    val client = getClient(path)
 
-    if (dirClient.exists()) {
-      Try(dirClient.delete()) match {
+    if (client.exists()) {
+      Try(client.delete()) match {
         case Success(_) => ()
         case Failure(ex) => throw LoggingUtility.logError(logger, ex)
       }
@@ -154,6 +166,9 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
   override def move(source: Path, target: Path, options: CopyOption*): Unit = ???
 
   override def isSameFile(path: Path, path2: Path): Boolean = {
+    if (isDir(path) || isDir(path2))
+      throw LoggingUtility.logError(logger, new IOException("path or path2 should be file"))
+
     val azureGen2Path = toAzureGen2Path(path)
     val azureGen2Path2 = toAzureGen2Path(path2)
     val pathMd5 = azureGen2Path.toFileClient.getProperties.getContentMd5
@@ -171,7 +186,11 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
     azureGen2Path.parentFileSystem.getFileStore(fileStore)
   }
 
-  override def checkAccess(path: Path, modes: AccessMode*): Unit = ???
+  // if file exists, then it's acccessable
+  override def checkAccess(path: Path, modes: AccessMode*): Unit = {
+    getClient(path).exists()
+  }
+
   override def getFileAttributeView[V <: FileAttributeView](path: Path, `type`: Class[V], options: LinkOption*): V = ???
   override def readAttributes(path: Path, attributes: String, options: LinkOption*): util.Map[String, AnyRef] = ???
   override def readAttributes[A <: BasicFileAttributes](path: Path, `type`: Class[A], options: LinkOption*): A = ???
@@ -217,7 +236,20 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
     }
   }
 
-  def toAzureGen2Path(path: Path): AzureGen2Path = {
+  private def toAzureGen2Path(path: Path): AzureGen2Path = {
     AzureGen2Path(getFileSystem(path.toUri).asInstanceOf[AzureGen2FileSystem], path.toUri.toString)
+  }
+
+  private def isDir(path: Path): Boolean = path.toString.endsWith("/")
+
+  private  def getClient(path: Path): AzureGen2Client = {
+    val azureGen2Path = toAzureGen2Path(path)
+    val fullPath = extractFullPathName(path.toUri)
+
+    if (isDir(path)) {
+      AzureGen2DirClient(azureGen2Path.toFileSystemClient.getDirectoryClient(fullPath))
+    } else {
+      AzureGen2FileClient(azureGen2Path.toFileClient)
+    }
   }
 }
