@@ -104,24 +104,26 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
 //  override def newOutputStream(path: Path, options: OpenOption*): OutputStream = ???
 
   override def newFileChannel(path: Path, options: util.Set[_ <: OpenOption], attrs: FileAttribute[_]*): FileChannel = {
-    val azurePath = toAzureGen2Path(path)
-    AzureGen2FileChannel(azurePath, options.asScala.toSet)
+    val azureGen2Path = toAzureGen2Path(path)
+    AzureGen2FileChannel(azureGen2Path, options.asScala.toSet)
   }
 
   override def newByteChannel(path: Path, options: util.Set[_ <: OpenOption], attrs: FileAttribute[_]*): SeekableByteChannel = {
-    val azurePath = toAzureGen2Path(path)
-    AzureGen2SeekableByteChannel(azurePath, options.asScala.toSet)
+    val azureGen2Path = toAzureGen2Path(path)
+    AzureGen2SeekableByteChannel(azureGen2Path, options.asScala.toSet)
   }
 
   override def newDirectoryStream(dir: Path, filter: DirectoryStream.Filter[_ >: Path]): DirectoryStream[Path] = {
-    val azureDir = toAzureGen2Path(dir)
+    val azureGen2Dir = toAzureGen2Path(dir)
     new DirectoryStream[Path]() {
       @throws[IOException]
       override def close(): Unit = {
         // nothing to do here
       }
 
-      override def iterator: util.Iterator[Path] = AzureGen2Iterator(azureDir)
+      override def iterator: util.Iterator[Path] = AzureGen2Iterator(azureGen2Dir)
+    }
+  }
     }
   }
 
