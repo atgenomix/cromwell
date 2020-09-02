@@ -216,9 +216,17 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
       throw new UnsupportedOperationException()
   }
 
+  @throws[IOException]
+  override def readAttributes[A <: BasicFileAttributes](path: Path, `type`: Class[A], options: LinkOption*): A = {
+    if ((`type` eq classOf[BasicFileAttributes]) || (`type` eq classOf[AzureBasicFileAttributes]))
+      getFileAttributeView(path, classOf[AzureBasicFileAttributeView], options: _*).readAttributes.asInstanceOf[A]
+    else if (`type` eq classOf[AzureBlobFileAttributes])
+      getFileAttributeView(path, classOf[AzureBlobFileAttributeView], options: _*).readAttributes.asInstanceOf[A]
+    else
+      throw new UnsupportedOperationException
+  }
 
   override def readAttributes(path: Path, attributes: String, options: LinkOption*): util.Map[String, AnyRef] = ???
-  override def readAttributes[A <: BasicFileAttributes](path: Path, `type`: Class[A], options: LinkOption*): A = ???
   override def setAttribute(path: Path, attribute: String, value: scala.Any, options: LinkOption*): Unit = ???
 
   def closeFileSystem(fileSystemName: String): Unit = {
