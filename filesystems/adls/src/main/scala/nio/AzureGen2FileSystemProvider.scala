@@ -4,11 +4,12 @@ import java.io.IOException
 import java.net.URI
 import java.nio.channels.{FileChannel, SeekableByteChannel}
 import java.nio.file._
-import java.nio.file.attribute.{BasicFileAttributes, FileAttribute, FileAttributeView}
+import java.nio.file.attribute.{BasicFileAttributeView, BasicFileAttributes, FileAttribute, FileAttributeView}
 import java.nio.file.spi.FileSystemProvider
 import java.util
 
 import com.azure.core.util.logging.ClientLogger
+import com.azure.storage.blob.nio.{AzureBasicFileAttributeView, AzureBasicFileAttributes, AzureBlobFileAttributeView, AzureBlobFileAttributes}
 import com.azure.storage.file.datalake.models.DataLakeStorageException
 import com.azure.storage.file.datalake.{DataLakeDirectoryClient, DataLakeFileClient, DataLakePathClient}
 
@@ -206,7 +207,16 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
     getClient(path).exists()
   }
 
-  override def getFileAttributeView[V <: FileAttributeView](path: Path, `type`: Class[V], options: LinkOption*): V = ???
+  override def getFileAttributeView[V <: FileAttributeView](path: Path, `type`: Class[V], options: LinkOption*): V = {
+    if ((`type` eq classOf[BasicFileAttributeView]) || (`type` eq classOf[AzureBasicFileAttributeView]))
+      new AzureBasicFileAttributeView(path).asInstanceOf[V]
+    else if (`type` eq classOf[AzureBlobFileAttributeView])
+      new AzureBlobFileAttributeView(path).asInstanceOf[V]
+    else
+      throw new UnsupportedOperationException()
+  }
+
+
   override def readAttributes(path: Path, attributes: String, options: LinkOption*): util.Map[String, AnyRef] = ???
   override def readAttributes[A <: BasicFileAttributes](path: Path, `type`: Class[A], options: LinkOption*): A = ???
   override def setAttribute(path: Path, attribute: String, value: scala.Any, options: LinkOption*): Unit = ???
