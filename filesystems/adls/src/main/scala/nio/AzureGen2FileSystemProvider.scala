@@ -152,7 +152,15 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
   override def deleteIfExists(path: Path): Boolean = ???
   override def copy(source: Path, target: Path, options: CopyOption*): Unit = ???
   override def move(source: Path, target: Path, options: CopyOption*): Unit = ???
-  override def isSameFile(path: Path, path2: Path): Boolean = ???
+
+  override def isSameFile(path: Path, path2: Path): Boolean = {
+    val azureGen2Path = toAzureGen2Path(path)
+    val azureGen2Path2 = toAzureGen2Path(path2)
+    val pathMd5 = azureGen2Path.toFileClient.getProperties.getContentMd5
+    val path2Md5 = azureGen2Path2.toFileClient.getProperties.getContentMd5
+
+    pathMd5.sameElements(path2Md5)
+  }
 
   override def isHidden(path: Path): Boolean = false
 
