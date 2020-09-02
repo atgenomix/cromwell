@@ -7,8 +7,6 @@ object Dependencies {
   private val azureAdlsV = "12.1.2"
   private val azureBlobNioV = "12.0.0-beta.1"
   private val azureIdentityV = "1.1.0"
-  private val akkaHttpCirceIntegrationV = "1.29.1"
-  private val akkaHttpV = "10.1.9"
   private val akkaV = "2.5.23"
   private val aliyunBcsV = "6.2.4"
   private val aliyunCoreV = "4.5.7"
