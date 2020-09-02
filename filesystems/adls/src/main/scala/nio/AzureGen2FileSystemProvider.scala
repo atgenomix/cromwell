@@ -153,8 +153,11 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
   override def copy(source: Path, target: Path, options: CopyOption*): Unit = ???
   override def move(source: Path, target: Path, options: CopyOption*): Unit = ???
   override def isSameFile(path: Path, path2: Path): Boolean = ???
-  override def isHidden(path: Path): Boolean = ???
   override def getFileStore(path: Path): FileStore = ???
+
+  override def isHidden(path: Path): Boolean = false
+
+
   override def checkAccess(path: Path, modes: AccessMode*): Unit = ???
   override def getFileAttributeView[V <: FileAttributeView](path: Path, `type`: Class[V], options: LinkOption*): V = ???
   override def readAttributes(path: Path, attributes: String, options: LinkOption*): util.Map[String, AnyRef] = ???
