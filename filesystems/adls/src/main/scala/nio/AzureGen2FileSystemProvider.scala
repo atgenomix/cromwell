@@ -40,16 +40,13 @@ object AzureGen2FileSystemProvider {
       @throws(classOf[IOException])
       @throws(classOf[IllegalArgumentException])
       override def newFileSystem(uri: URI, env: util.Map[String, _]): FileSystem = {
-        extractAccountName(uri) match {
-          case Right(accountName) =>
-            this.openFileSystems.get(accountName) match {
-              case Some(_) =>
-                throw LoggingUtility.logError(this.logger, new FileSystemAlreadyExistsException("Name: " + accountName))
-              case None =>
-                val afs = AzureGen2FileSystem(this, accountName, accountKey, env.asScala.toMap)
-                this.openFileSystems.put(accountName, afs).get
-            }
-          case Left(ex) => throw ex
+        val accountName = extractAccountName(uri)
+        this.openFileSystems.get(accountName) match {
+          case Some(_) =>
+            throw LoggingUtility.logError(this.logger, new FileSystemAlreadyExistsException("Name: " + accountName))
+          case None =>
+            val afs = AzureGen2FileSystem(this, accountName, accountKey, env.asScala.toMap)
+            this.openFileSystems.put(accountName, afs).get
         }
       }
     }
@@ -63,17 +60,15 @@ object AzureGen2FileSystemProvider {
       @throws(classOf[IOException])
       @throws(classOf[IllegalArgumentException])
       override def newFileSystem(uri: URI, env: util.Map[String, _]): FileSystem = {
-        extractAccountName(uri) match {
-          case Right(accountName) =>
-            this.openFileSystems.get(accountName) match {
-              case Some(_) =>
-                throw LoggingUtility.logError(this.logger, new FileSystemAlreadyExistsException("Name: " + accountName))
-              case None =>
-                val afs = AzureGen2FileSystem(this, accountName, clientId, clientSecret, tenantId, env.asScala.toMap)
-                this.openFileSystems.put(accountName, afs).get
-            }
-          case Left(ex) => throw ex
+        val accountName = extractAccountName(uri)
+        this.openFileSystems.get(accountName) match {
+          case Some(_) =>
+            throw LoggingUtility.logError(this.logger, new FileSystemAlreadyExistsException("Name: " + accountName))
+          case None =>
+            val afs = AzureGen2FileSystem(this, accountName, clientId, clientSecret, tenantId, env.asScala.toMap)
+            this.openFileSystems.put(accountName, afs).get
         }
+
       }
     }
 
@@ -93,10 +88,8 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
   @throws(classOf[FileSystemNotFoundException])
   @throws(classOf[IllegalArgumentException])
   override def getFileSystem(uri: URI): FileSystem = {
-    extractAccountName(uri) match {
-      case Left(ex) => throw ex
-      case Right(fs) => this.openFileSystems(fs)
-    }
+    val accountName = extractAccountName(uri)
+    this.openFileSystems(accountName)
   }
 
   override def getPath(uri: URI): Path = { getFileSystem(uri).getPath(uri.getPath) }
