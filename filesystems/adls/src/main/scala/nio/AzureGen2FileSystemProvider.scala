@@ -129,38 +129,30 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
   override def createDirectory(dir: Path, attrs: FileAttribute[_]*): Unit = {
     val azureGen2Dir = toAzureGen2Path(dir)
     val fullPath = extractFullPathName(dir.toUri)
+    val parentDir = azureGen2Dir.getParent.toUri.toString
+    val parentDirClient = azureGen2Dir.toFileSystemClient.getDirectoryClient(parentDir)
 
-    fullPath match {
-      case Left(ex) => throw ex
-      case Right(p) =>
-        val parentDir = azureGen2Dir.getParent.toUri.toString
-        val parentDirClient = azureGen2Dir.toFileSystemClient.getDirectoryClient(parentDir)
-        if (parentDirClient.exists()) {
-          val subDirClient = parentDirClient.getSubdirectoryClient(p)
-          subDirClient.setMetadata(attrs.map(i => i.name() -> i.value().toString).toMap.asJava)
-          subDirClient.create()
-        } else {
-          throw LoggingUtility.logError(logger, new IOException("Parent directory does not exist for path: " + parentDir))
-        }
+    if (parentDirClient.exists()) {
+      val subDirClient = parentDirClient.getSubdirectoryClient(fullPath)
+      subDirClient.setMetadata(attrs.map(i => i.name() -> i.value().toString).toMap.asJava)
+      subDirClient.create()
+    } else {
+      throw LoggingUtility.logError(logger, new IOException("Parent directory does not exist for path: " + parentDir))
     }
   }
 
   override def delete(path: Path): Unit = {
     val azureGen2Path = toAzureGen2Path(path)
     val fullPath = extractFullPathName(path.toUri)
+    val dirClient = azureGen2Path.toFileSystemClient.getDirectoryClient(fullPath)
 
-    fullPath match {
-      case Left(ex) => throw ex
-      case Right(p) =>
-        val dirClient = azureGen2Path.toFileSystemClient.getDirectoryClient(p)
-        if (dirClient.exists()) {
-          Try(dirClient.delete()) match {
-            case Success(_) => ()
-            case Failure(ex) => throw LoggingUtility.logError(logger, ex)
-          }
-        } else {
-          throw LoggingUtility.logError(logger, new NoSuchFileException(p))
-        }
+    if (dirClient.exists()) {
+      Try(dirClient.delete()) match {
+        case Success(_) => ()
+        case Failure(ex) => throw LoggingUtility.logError(logger, ex)
+      }
+    } else {
+      throw LoggingUtility.logError(logger, new NoSuchFileException(fullPath))
     }
   }
 
@@ -180,30 +172,30 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
     this.openFileSystems.remove(fileSystemName)
   }
 
-  private def extractFileSystemName(uri: URI): Either[Throwable, String] = {
+  private def extractFileSystemName(uri: URI): String = {
     extract(uri, 2)
   }
 
-  private def extractAccountName(uri: URI): Either[Throwable, String] = {
+  private def extractAccountName(uri: URI): String = {
     extract(uri, 3)
   }
 
-  private def extractPathName(uri: URI): Either[Throwable, String] = {
-    extract(uri, 4).map { i =>
-      val idx = i.lastIndexOf("/")
-      i.take(idx)
-    }
+  private def extractPathName(uri: URI): String = {
+    val fullName = extract(uri, 4)
+    val idx = fullName.lastIndexOf("/")
+    fullName.take(idx)
   }
 
-  private def extractFileName(uri: URI): Either[Throwable, String] = {
-    extract(uri, 4).map(_.split("/").last)
+  private def extractFileName(uri: URI): String = {
+    val fullName = extract(uri, 4)
+    fullName.split("/").last
   }
 
-  private def extractFullPathName(uri: URI): Either[Throwable, String] = {
+  private def extractFullPathName(uri: URI): String = {
     extract(uri, 4)
   }
 
-  private def extract(uri: URI, idx: Int): Either[Throwable, String] = {
+  private def extract(uri: URI, idx: Int): String = {
     if (uri.getScheme != this.getScheme && uri.getScheme != this.getTlsScheme) {
       Left(LoggingUtility.logError(this.logger, new IllegalArgumentException("URI scheme does not match this provider")))
     }
@@ -211,8 +203,8 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
     this.pattern
       .findFirstMatchIn(uri.toString)
       .map(_.group(idx)) match {
-      case Some(i) => Right(i)
-      case None => Left(LoggingUtility.logError(this.logger, new IllegalArgumentException("URI invalid format")))
+      case Some(i) => i
+      case None => throw LoggingUtility.logError(this.logger, new IllegalArgumentException("URI invalid format"))
     }
   }
 
