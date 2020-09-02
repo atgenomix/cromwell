@@ -19,14 +19,19 @@ import scala.util.matching.Regex
 
 trait AzureGen2Client extends DataLakePathClient {
   abstract def delete()
+  abstract def rename(destinationFileSystem: String, destinationPath: String)
 }
 
 case class AzureGen2DirClient(client: DataLakeDirectoryClient) extends AzureGen2Client {
   override def delete(): Unit = client.delete()
+
+  override def rename(destinationFileSystem: String, destinationPath: String) = client.rename(destinationFileSystem, destinationPath)
 }
 
 case class AzureGen2FileClient(client: DataLakeFileClient) extends AzureGen2Client {
   override def delete(): Unit = client.delete()
+
+  override def rename(destinationFileSystem: String, destinationPath: String) = client.rename(destinationFileSystem, destinationPath)
 }
 
 object AzureGen2FileSystemProvider {
@@ -163,7 +168,13 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
   }
 
   override def copy(source: Path, target: Path, options: CopyOption*): Unit = ???
-  override def move(source: Path, target: Path, options: CopyOption*): Unit = ???
+
+  override def move(source: Path, target: Path, options: CopyOption*): Unit = {
+    val dstFileSystem = extractFileSystemName(target.toUri)
+    val dst = extractFullPathName(target.toUri)
+
+    getClient(source).rename(dstFileSystem, dst)
+  }
 
   override def isSameFile(path: Path, path2: Path): Boolean = {
     if (isDir(path) || isDir(path2))
