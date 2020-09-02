@@ -153,10 +153,15 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
   override def copy(source: Path, target: Path, options: CopyOption*): Unit = ???
   override def move(source: Path, target: Path, options: CopyOption*): Unit = ???
   override def isSameFile(path: Path, path2: Path): Boolean = ???
-  override def getFileStore(path: Path): FileStore = ???
 
   override def isHidden(path: Path): Boolean = false
 
+  override def getFileStore(path: Path): FileStore = {
+    val fileStore = extractFileSystemName(path.toUri)
+    val azureGen2Path = toAzureGen2Path(path)
+
+    azureGen2Path.parentFileSystem.getFileStore(fileStore)
+  }
 
   override def checkAccess(path: Path, modes: AccessMode*): Unit = ???
   override def getFileAttributeView[V <: FileAttributeView](path: Path, `type`: Class[V], options: LinkOption*): V = ???
