@@ -87,7 +87,7 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
   override def getScheme = "abfs"
   def getTlsScheme = "abfss"
 
-  def pattern: Regex = "(abfs[s]?)://([0-9a-zA-Z-_]+)@([0-9a-zA-Z-_]+).dfs.core.windows.net(.+)".r
+  def pattern: Regex = "(abfs[s]?)://([0-9a-zA-Z-_]+)@([0-9a-zA-Z-_]+).dfs.core.windows.net/(.+)".r
 
   @throws(classOf[FileSystemNotFoundException])
   @throws(classOf[IllegalArgumentException])
