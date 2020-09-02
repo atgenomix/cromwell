@@ -104,17 +104,17 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
 //  override def newOutputStream(path: Path, options: OpenOption*): OutputStream = ???
 
   override def newFileChannel(path: Path, options: util.Set[_ <: OpenOption], attrs: FileAttribute[_]*): FileChannel = {
-    val azurePath = AzureGen2Path(getFileSystem(path.toUri).asInstanceOf[AzureGen2FileSystem], path.toUri.toString)
+    val azurePath = toAzureGen2Path(path)
     AzureGen2FileChannel(azurePath, options.asScala.toSet)
   }
 
   override def newByteChannel(path: Path, options: util.Set[_ <: OpenOption], attrs: FileAttribute[_]*): SeekableByteChannel = {
-    val azurePath = AzureGen2Path(getFileSystem(path.toUri).asInstanceOf[AzureGen2FileSystem], path.toUri.toString)
+    val azurePath = toAzureGen2Path(path)
     AzureGen2SeekableByteChannel(azurePath, options.asScala.toSet)
   }
 
   override def newDirectoryStream(dir: Path, filter: DirectoryStream.Filter[_ >: Path]): DirectoryStream[Path] = {
-    val azureDir = AzureGen2Path(getFileSystem(dir.toUri).asInstanceOf[AzureGen2FileSystem], dir.toUri.toString)
+    val azureDir = toAzureGen2Path(dir)
     new DirectoryStream[Path]() {
       @throws[IOException]
       override def close(): Unit = {
@@ -173,5 +173,9 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
       case Some(i) => Right(i)
       case None => Left(LoggingUtility.logError(this.logger, new IllegalArgumentException("URI invalid format")))
     }
+  }
+
+  def toAzureGen2Path(path: Path): AzureGen2Path = {
+    AzureGen2Path(getFileSystem(path.toUri).asInstanceOf[AzureGen2FileSystem], path.toUri.toString)
   }
 }
