@@ -12,6 +12,7 @@ import com.azure.core.util.logging.ClientLogger
 
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
+import scala.util.{Failure, Success, Try}
 import scala.util.matching.Regex
 
 object AzureGen2FileSystemProvider {
@@ -143,10 +144,26 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
         }
     }
   }
+
+  override def delete(path: Path): Unit = {
+    val azureGen2Path = toAzureGen2Path(path)
+    val fullPath = extractFullPathName(path.toUri)
+
+    fullPath match {
+      case Left(ex) => throw ex
+      case Right(p) =>
+        val dirClient = azureGen2Path.toFileSystemClient.getDirectoryClient(p)
+        if (dirClient.exists()) {
+          Try(dirClient.delete()) match {
+            case Success(_) => ()
+            case Failure(ex) => throw LoggingUtility.logError(logger, ex)
+          }
+        } else {
+          throw LoggingUtility.logError(logger, new NoSuchFileException(p))
+        }
     }
   }
 
-  override def delete(path: Path): Unit = ???
   override def deleteIfExists(path: Path): Boolean = ???
   override def copy(source: Path, target: Path, options: CopyOption*): Unit = ???
   override def move(source: Path, target: Path, options: CopyOption*): Unit = ???
