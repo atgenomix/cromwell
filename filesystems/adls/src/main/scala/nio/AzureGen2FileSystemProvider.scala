@@ -19,8 +19,8 @@ import scala.util.{Failure, Success, Try}
 import scala.util.matching.Regex
 
 trait AzureGen2Client extends DataLakePathClient {
-  abstract def delete(): Unit
-  abstract def rename(destinationFileSystem: String, destinationPath: String): Unit
+  def delete(): Unit
+  def rename(destinationFileSystem: String, destinationPath: String): Unit
 }
 
 case class AzureGen2DirClient(client: DataLakeDirectoryClient) extends AzureGen2Client {
