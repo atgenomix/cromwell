@@ -3,7 +3,7 @@ package nio
 import java.io.IOException
 import java.nio.file.attribute.BasicFileAttributeView
 import java.nio.file.spi.FileSystemProvider
-import java.nio.file.{FileStore, FileSystem, InvalidPathException, Path}
+import java.nio.file.{FileStore, FileSystem, Path}
 import java.util
 
 import com.azure.core.http.policy.HttpLogDetailLevel

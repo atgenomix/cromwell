@@ -11,7 +11,7 @@ import java.util
 import com.azure.core.util.logging.ClientLogger
 import com.azure.storage.blob.nio.{AzureBasicFileAttributeView, AzureBasicFileAttributes, AzureBlobFileAttributeView, AzureBlobFileAttributes}
 import com.azure.storage.file.datalake.models.DataLakeStorageException
-import com.azure.storage.file.datalake.{DataLakeDirectoryClient, DataLakeFileClient, DataLakePathClient}
+import com.azure.storage.file.datalake.{DataLakeDirectoryClient, DataLakeFileClient}
 
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
