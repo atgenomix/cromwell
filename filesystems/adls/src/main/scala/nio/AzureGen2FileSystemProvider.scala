@@ -18,13 +18,16 @@ import scala.collection.concurrent.TrieMap
 import scala.util.{Failure, Success, Try}
 import scala.util.matching.Regex
 
-trait AzureGen2Client extends DataLakePathClient {
+trait AzureGen2Client {
   def delete(): Unit
+  def exists(): Boolean
   def rename(destinationFileSystem: String, destinationPath: String): Unit
 }
 
 case class AzureGen2DirClient(client: DataLakeDirectoryClient) extends AzureGen2Client {
   override def delete(): Unit = client.delete()
+
+  override def exists(): Boolean = client.exists()
 
   override def rename(destinationFileSystem: String, destinationPath: String): Unit = {
     client.rename(destinationFileSystem, destinationPath)
@@ -34,6 +37,8 @@ case class AzureGen2DirClient(client: DataLakeDirectoryClient) extends AzureGen2
 
 case class AzureGen2FileClient(client: DataLakeFileClient) extends AzureGen2Client {
   override def delete(): Unit = client.delete()
+
+  override def exists(): Boolean = client.exists()
 
   override def rename(destinationFileSystem: String, destinationPath: String): Unit = {
     client.rename(destinationFileSystem, destinationPath)
