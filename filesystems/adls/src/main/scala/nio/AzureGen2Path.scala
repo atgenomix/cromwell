@@ -137,7 +137,7 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: Stri
     */
   override def getName(index: Int): Path = {
     if (index < 0 || index >= this.getNameCount)
-      throw LoggingUtility.logError(AzureGen2Path.logger, new IllegalArgumentException(String.format("Index %d is out of " + "bounds", index)))
+      throw LoggingUtility.logError(AzureGen2Path.logger, new IllegalArgumentException(s"Index $index is out of " + "bounds"))
     // If the path is empty, the only valid option is also an empty path.
     if (this.pathString.isEmpty)
       return this
@@ -159,7 +159,7 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: Stri
     */
   override def subpath(begin: Int, end: Int): Path = {
     if (begin < 0 || begin >= this.getNameCount || end <= begin || end > this.getNameCount)
-      throw LoggingUtility.logError(AzureGen2Path.logger, new IllegalArgumentException(String.format("Values of begin: %d and end: %d are invalid", begin, end)))
+      throw LoggingUtility.logError(AzureGen2Path.logger, new IllegalArgumentException(s"Values of begin: $begin and end: $end are invalid"))
 
     val subnames = this.splitToElements(this.withoutRoot).tail.dropRight(1)
     this.parentFileSystem.getPath(subnames.mkString(parentFileSystem.getSeparator))
