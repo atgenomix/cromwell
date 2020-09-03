@@ -79,9 +79,8 @@ object AzureGen2FileSystem {
 
   private[nio] val ROOT_DIR_SUFFIX = ":"
 
-  private val AZURE_STORAGE_GEN2_ENDPOINT_TEMPLATE = "%s://%s.dfs.core.windows.net"
-
   private def getRetryOptions(config: Map[String, _]) = {
+  private def getRetryOptions(config: Map[String, Any]) = {
     new RequestRetryOptions(
       config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_RETRY_POLICY_TYPE, RetryPolicyType.EXPONENTIAL).asInstanceOf[RetryPolicyType],
       config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_MAX_TRIES, 4).asInstanceOf[Int],
@@ -157,7 +156,6 @@ case class AzureGen2FileSystem(
   private val blockSize = config.get(AzureGen2FileSystem.AZURE_STORAGE_UPLOAD_BLOCK_SIZE).asInstanceOf[Long]
   private val putBlobThreshold = config.get(AzureGen2FileSystem.AZURE_STORAGE_PUT_BLOB_THRESHOLD).asInstanceOf[Long]
   private val maxConcurrencyPerRequest = config.get(AzureGen2FileSystem.AZURE_STORAGE_MAX_CONCURRENCY_PER_REQUEST).asInstanceOf[Integer]
-  private val downloadResumeRetries = config.get(AzureGen2FileSystem.AZURE_STORAGE_DOWNLOAD_RESUME_RETRIES).asInstanceOf[Integer]
   private var defaultFileStore: FileStore = _
   private val fileStores: Map[String, FileStore] = initializeFileStores(config)
   private var closed = false

@@ -57,9 +57,6 @@ object AzureGen2FileSystemProvider {
 
   val CACHE_CONTROL = "Cache-Control"
 
-  private val ACCOUNT_QUERY_KEY = "account"
-  private val COPY_TIMEOUT_SECONDS = 30
-
   def apply(accountName: String, accountKey: String): AzureGen2FileSystemProvider = {
     val provider = new AzureGen2FileSystemProvider {
       @throws(classOf[FileSystemAlreadyExistsException])
@@ -253,16 +250,16 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
     extract(uri, 3)
   }
 
-  private def extractPathName(uri: URI): String = {
-    val fullName = extract(uri, 4)
-    val idx = fullName.lastIndexOf("/")
-    fullName.take(idx)
-  }
+//  private def extractPathName(uri: URI): String = {
+//    val fullName = extract(uri, 4)
+//    val idx = fullName.lastIndexOf("/")
+//    fullName.take(idx)
+//  }
 
-  private def extractFileName(uri: URI): String = {
-    val fullName = extract(uri, 4)
-    fullName.split("/").last
-  }
+//  private def extractFileName(uri: URI): String = {
+//    val fullName = extract(uri, 4)
+//    fullName.split("/").last
+//  }
 
   private def extractFullPathName(uri: URI): String = {
     extract(uri, 4)

@@ -4,13 +4,12 @@ import java.io.IOException
 import java.nio.file.FileStore
 import java.nio.file.attribute.{FileAttributeView, FileStoreAttributeView}
 
-import com.azure.core.util.logging.ClientLogger
 import com.azure.storage.file.datalake.DataLakeFileSystemClient
 
 import scala.collection.JavaConverters._
 
 object AzureGen2FileStore {
-  private val logger = new ClientLogger(classOf[AzureGen2FileStore])
+  // private val logger = new ClientLogger(classOf[AzureGen2FileStore])
   private val AZURE_FILE_STORE_TYPE = "AzureBlobContainer"
 
   def apply(parentFileSystem: AzureGen2FileSystem, fileSystemName: String): AzureGen2FileStore = {
