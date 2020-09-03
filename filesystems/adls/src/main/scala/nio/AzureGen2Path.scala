@@ -575,7 +575,7 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: Stri
     str
   }
 
-  private def splitToElements = this.splitToElements(this.pathString)
+  private def splitToElements: Array[String] = this.splitToElements(this.pathString)
 
   private def splitToElements(str: String): Array[String] = {
     val arr = str.split(this.parentFileSystem.getSeparator)
