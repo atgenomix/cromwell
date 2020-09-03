@@ -134,8 +134,8 @@ case class AdlsPath private[adls](nioPath: NioPath,
   override def writeContent(content: String)(openOptions: OpenOptions, codec: Codec, compressPayload: Boolean)(implicit ec: ExecutionContext) = {
     val inputStream = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8))
     val fileSize = content.length
-    client.append(inputStream, 0, fileSize)
-    client.flush(fileSize)
+    client.append(inputStream, 0, fileSize.toLong)
+    client.flush(fileSize.toLong)
     inputStream.close()
     this
   }
