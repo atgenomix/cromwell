@@ -64,12 +64,12 @@ object AzureGen2FileSystemProvider {
       @throws(classOf[IllegalArgumentException])
       override def newFileSystem(uri: URI, env: util.Map[String, _]): FileSystem = {
         val accountName = extractAccountName(uri)
-        this.openFileSystems.get(accountName) match {
+        openFileSystems.get(accountName) match {
           case Some(_) =>
             throw LoggingUtility.logError(this.logger, new FileSystemAlreadyExistsException("Name: " + accountName))
           case None =>
             val afs = AzureGen2FileSystem(this, accountName, accountKey, env.asScala.toMap)
-            this.openFileSystems.put(accountName, afs).get
+            openFileSystems.put(accountName, afs).get
         }
       }
     }
@@ -84,12 +84,12 @@ object AzureGen2FileSystemProvider {
       @throws(classOf[IllegalArgumentException])
       override def newFileSystem(uri: URI, env: util.Map[String, _]): FileSystem = {
         val accountName = extractAccountName(uri)
-        this.openFileSystems.get(accountName) match {
+        openFileSystems.get(accountName) match {
           case Some(_) =>
             throw LoggingUtility.logError(this.logger, new FileSystemAlreadyExistsException("Name: " + accountName))
           case None =>
             val afs = AzureGen2FileSystem(this, accountName, clientId, clientSecret, tenantId, env.asScala.toMap)
-            this.openFileSystems.put(accountName, afs).get
+            openFileSystems.put(accountName, afs).get
         }
 
       }
@@ -99,9 +99,9 @@ object AzureGen2FileSystemProvider {
   }
 }
 
-abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
-  private val logger = new ClientLogger(classOf[AzureGen2FileSystemProvider])
-  private val openFileSystems = TrieMap[String, FileSystem]()
+class AzureGen2FileSystemProvider extends FileSystemProvider {
+  protected val logger = new ClientLogger(classOf[AzureGen2FileSystemProvider])
+  protected val openFileSystems = TrieMap[String, FileSystem]()
 
   override def getScheme = "abfs"
   def getTlsScheme = "abfss"
@@ -246,7 +246,7 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
     extract(uri, 2)
   }
 
-  private def extractAccountName(uri: URI): String = {
+  protected def extractAccountName(uri: URI): String = {
     extract(uri, 3)
   }
 
