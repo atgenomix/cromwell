@@ -28,6 +28,7 @@ case class AzureGen2DirClient(client: DataLakeDirectoryClient) extends AzureGen2
 
   override def rename(destinationFileSystem: String, destinationPath: String): Unit = {
     client.rename(destinationFileSystem, destinationPath)
+    ()
   }
 }
 
@@ -36,6 +37,7 @@ case class AzureGen2FileClient(client: DataLakeFileClient) extends AzureGen2Clie
 
   override def rename(destinationFileSystem: String, destinationPath: String): Unit = {
     client.rename(destinationFileSystem, destinationPath)
+    ()
   }
 }
 
@@ -153,6 +155,7 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
       val subDirClient = parentDirClient.getSubdirectoryClient(fullPath)
       subDirClient.setMetadata(attrs.map(i => i.name() -> i.value().toString).toMap.asJava)
       subDirClient.create()
+      ()
     } else {
       throw LoggingUtility.logError(logger, new IOException("Parent directory does not exist for path: " + parentDir))
     }
@@ -212,6 +215,7 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
   // if file exists, then it's acccessable
   override def checkAccess(path: Path, modes: AccessMode*): Unit = {
     getClient(path).exists()
+    ()
   }
 
   override def getFileAttributeView[V <: FileAttributeView](path: Path, `type`: Class[V], options: LinkOption*): V = {
@@ -238,6 +242,7 @@ abstract class AzureGen2FileSystemProvider extends FileSystemProvider {
 
   def closeFileSystem(fileSystemName: String): Unit = {
     this.openFileSystems.remove(fileSystemName)
+    ()
   }
 
   private def extractFileSystemName(uri: URI): String = {

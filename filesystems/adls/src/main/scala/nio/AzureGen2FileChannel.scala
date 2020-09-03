@@ -93,5 +93,6 @@ case class AzureGen2FileChannel(path: AzureGen2Path, options: Set[_ <: OpenOptio
       fsClient.uploadFromFile(tempFile.toUri.getPath, true)
 
     Files.deleteIfExists(tempFile)
+    ()
   }
 }

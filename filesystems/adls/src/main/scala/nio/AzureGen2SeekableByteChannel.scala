@@ -57,6 +57,7 @@ case class AzureGen2SeekableByteChannel(path: AzureGen2Path, options: Set[_ <: O
     }
 
     Files.deleteIfExists(tempFile)
+    ()
   }
 
 
