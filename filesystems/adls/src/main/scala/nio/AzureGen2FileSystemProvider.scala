@@ -181,8 +181,8 @@ class AzureGen2FileSystemProvider extends FileSystemProvider {
   override def createDirectory(dir: Path, attrs: FileAttribute[_]*): Unit = {
     val azureGen2Dir = toAzureGen2Path(dir)
     val fullPath = extractFullPathName(dir.toUri)
-    val parentDir = azureGen2Dir.getParent.toUri.toString
-    val parentDirClient = azureGen2Dir.toFileSystemClient.getDirectoryClient(parentDir)
+    val parentDir: AzureGen2Path = azureGen2Dir.getParent.asInstanceOf[AzureGen2Path]
+    val parentDirClient = parentDir.toDirectoryClient
 
     if (parentDirClient.exists()) {
       val subDirClient = parentDirClient.getSubdirectoryClient(fullPath)
@@ -315,7 +315,11 @@ class AzureGen2FileSystemProvider extends FileSystemProvider {
   }
 
   private def toAzureGen2Path(path: Path): AzureGen2Path = {
-    AzureGen2Path(getFileSystem(path.toUri).asInstanceOf[AzureGen2FileSystem], path.toUri.toString)
+    if (!path.isInstanceOf[AzureGen2Path]) {
+      throw new ProviderMismatchException(s"Not a Azure Data Lake Gen2 storage path $path")
+    }
+
+    path.asInstanceOf[AzureGen2Path]
   }
 
   private def isDir(path: Path): Boolean = path.toString.endsWith("/")
