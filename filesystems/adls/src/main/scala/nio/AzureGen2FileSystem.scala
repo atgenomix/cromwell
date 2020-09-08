@@ -1,7 +1,7 @@
 package nio
 
 import java.io.IOException
-import java.nio.file.attribute.BasicFileAttributeView
+import java.nio.file.attribute.{BasicFileAttributeView, FileAttributeView}
 import java.nio.file.spi.FileSystemProvider
 import java.nio.file.{FileStore, FileSystem, Path}
 import java.util
@@ -62,7 +62,7 @@ object AzureGen2FileSystem {
     */
   private val AZURE_STORAGE_FILE_STORES = "AzureStorageFileStores"
 
-  val SUPPORTED_ATTRIBUTE_VIEWS = Map(
+  val SUPPORTED_ATTRIBUTE_VIEWS = Map[Class[_ <: FileAttributeView], String](
     (classOf[BasicFileAttributeView], "basic"),
     (classOf[AzureBasicFileAttributeView], "azureBasic"),
     (classOf[AzureBlobFileAttributeView], "azureBlob"))
