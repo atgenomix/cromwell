@@ -11,30 +11,17 @@ import scala.collection.JavaConverters._
 
 object AzureGen2Path {
   private val logger = new ClientLogger(classOf[AzureGen2Path])
-  private[nio] val ROOT_DIR_SUFFIX = ":"
 
-  def apply(parentFileSystem: AzureGen2FileSystem, first: String, more: String*): AzureGen2Path = {
+  def apply(parentFileSystem: AzureGen2FileSystem, fileStoreName: String, first: String, more: String*): AzureGen2Path = {
     val separator = AzureGen2FileSystem.PATH_SEPARATOR
     val elements = first.split(separator) ++ more.flatMap(_.split(separator))
     val pathString = elements.filter(_.nonEmpty).mkString(separator)
 
-    val hd = elements.head
-    if (hd.contains(ROOT_DIR_SUFFIX) && hd.indexOf(ROOT_DIR_SUFFIX) < hd.length - 1)
-      throw LoggingUtility.logError(
-        logger,
-        new InvalidPathException(pathString, ROOT_DIR_SUFFIX + " may only be used as the last character in the root component of a path"))
-    elements.tail.foreach { e =>
-      if (e.contains(ROOT_DIR_SUFFIX))
-        throw LoggingUtility.logError(
-          logger,
-          new InvalidPathException(pathString, ROOT_DIR_SUFFIX + " is an invalid character except to identify the root element of this path if there is one."))
-    }
-
-    new AzureGen2Path(parentFileSystem, pathString)
+    new AzureGen2Path(parentFileSystem, fileStoreName, pathString)
   }
 }
 
-case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: String) extends Path {
+case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, fileStoreName: String, pathString: String) extends Path {
   /**
     * Returns the file system that created this object.
     *
@@ -61,13 +48,7 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: Stri
     *
     * @return a path representing the root component of this path, or null
     */
-  override def getRoot: Path = { // Check if the first element of the path is formatted like a root directory.
-    val elements = this.splitToElements
-    if (elements.length > 0 && elements(0).endsWith(AzureGen2Path.ROOT_DIR_SUFFIX))
-      this.parentFileSystem.getPath(elements(0))
-    else
-      None.orNull
-  }
+  override def getRoot: Path = this.parentFileSystem.getPathByFileStore(fileStoreName, "")
 
   /**
     * Returns the name of the file or directory denoted by this path as a Path object. The file name is the farthest
@@ -82,7 +63,7 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: Stri
       this
     else {
       val elements = this.splitToElements
-      this.parentFileSystem.getPath(elements.last)
+      this.parentFileSystem.getPathByFileStore(fileStoreName, elements.last)
     }
 
   /**
@@ -111,7 +92,7 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: Stri
     if (elements.length == 1 || elements.length == 0)
       None.orNull
     else
-      this.parentFileSystem.getPath(this.pathString.substring(0, this.pathString.lastIndexOf(this.parentFileSystem.getSeparator)))
+      this.parentFileSystem.getPathByFileStore(fileStoreName, this.pathString.substring(0, this.pathString.lastIndexOf(this.parentFileSystem.getSeparator)))
   }
 
   /**
@@ -142,7 +123,7 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: Stri
     if (this.pathString.isEmpty)
       return this
 
-    this.parentFileSystem.getPath(this.splitToElements(this.withoutRoot)(index))
+    this.parentFileSystem.getPathByFileStore(fileStoreName, this.splitToElements(this.withoutRoot)(index))
   }
 
   /**
@@ -162,7 +143,7 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: Stri
       throw LoggingUtility.logError(AzureGen2Path.logger, new IllegalArgumentException(s"Values of begin: $begin and end: $end are invalid"))
 
     val subnames = this.splitToElements(this.withoutRoot).tail.dropRight(1)
-    this.parentFileSystem.getPath(subnames.mkString(parentFileSystem.getSeparator))
+    this.parentFileSystem.getPathByFileStore(fileStoreName, subnames.mkString(parentFileSystem.getSeparator))
   }
 
   /**
@@ -204,7 +185,7 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: Stri
     * @return true if this path starts with the given path; otherwise false
     * @throws InvalidPathException If the path string cannot be converted to a Path.
     */
-  override def startsWith(path: String): Boolean = this.startsWith(this.parentFileSystem.getPath(path))
+  override def startsWith(path: String): Boolean = this.startsWith(this.parentFileSystem.getPathByFileStore(fileStoreName, path))
 
   /**
     * Tests if this path ends with the given path.
@@ -253,7 +234,7 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: Stri
     * @return true if this path starts with the given path; otherwise false
     * @throws InvalidPathException If the path string cannot be converted to a Path.
     */
-  override def endsWith(path: String): Boolean = this.endsWith(this.parentFileSystem.getPath(path))
+  override def endsWith(path: String): Boolean = this.endsWith(this.parentFileSystem.getPathByFileStore(fileStoreName, path))
 
   /**
     * Returns a path that is this path with redundant name elements eliminated.
@@ -291,7 +272,7 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: Stri
         else stack.removeLast()
       }
     }
-    this.parentFileSystem.getPath("", stack.toArray(new Array[String](0)): _*)
+    this.parentFileSystem.getPathByFileStore(fileStoreName, "", stack.toArray(new Array[String](0)): _*)
   }
 
   /**
@@ -310,7 +291,7 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: Stri
   override def resolve(path: Path): Path = {
     if (path.isAbsolute) return path
     if (path.getNameCount == 0) return this
-    this.parentFileSystem.getPath(this.toString, path.toString)
+    this.parentFileSystem.getPathByFileStore(fileStoreName, this.toString, path.toString)
   }
 
   /**
@@ -321,7 +302,7 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: Stri
     * @return the resulting path
     * @throws InvalidPathException if the path string cannot be converted to a Path.
     */
-  override def resolve(path: String): Path = this.resolve(this.parentFileSystem.getPath(path))
+  override def resolve(path: String): Path = this.resolve(this.parentFileSystem.getPathByFileStore(fileStoreName, path))
 
   /**
     * Resolves the given path against this path's parent path. This is useful where a file name needs to be replaced
@@ -348,7 +329,7 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: Stri
     * @return the resulting path
     * @throws InvalidPathException if the path string cannot be converted to a Path.
     */
-  override def resolveSibling(path: String): Path = this.resolveSibling(this.parentFileSystem.getPath(path))
+  override def resolveSibling(path: String): Path = this.resolveSibling(this.parentFileSystem.getPathByFileStore(fileStoreName, path))
 
   /**
     * Constructs a relative path between this path and a given path.
@@ -388,7 +369,7 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: Stri
       deque.addFirst("..")
       i += 1
     }
-    this.parentFileSystem.getPath("", deque.toArray(new Array[String](0)).toList: _*)
+    this.parentFileSystem.getPathByFileStore(fileStoreName, "", deque.toArray(new Array[String](0)).toList: _*)
   }
 
   /**
@@ -418,8 +399,7 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: Stri
     * @throws SecurityException never
     */
   override def toAbsolutePath: Path = {
-    if (this.isAbsolute) return this
-    this.parentFileSystem.getDefaultDirectory.resolve(this)
+    this
   }
 
   /**
@@ -481,7 +461,7 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: Stri
       Iterator[Path]().asJava
 
     this.splitToElements(this.withoutRoot)
-      .map(s => this.parentFileSystem.getPath(s).asInstanceOf[Path])
+      .map(s => this.parentFileSystem.getPathByFileStore(fileStoreName, s).asInstanceOf[Path])
       .toIterator
       .asJava
   }
@@ -538,17 +518,29 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: Stri
   construct the client or perform any validation until it is requested.
    */
   @throws[IOException]
-  private[nio] def toFileClient = { // Converting to an absolute path ensures there is a container to operate on even if it is the default.
-    // Normalizing ensures the path is clean.
-    val root = this.normalize().toAbsolutePath.getRoot
-    if (root == null)
-      throw LoggingUtility.logError(AzureGen2Path.logger, new IllegalStateException("Root should never be null after calling toAbsolutePath."))
-
-    val fileStoreName = this.rootToFileStore(root.toString)
-    val fileSystemClient = this.parentFileSystem.getFileStore(fileStoreName).asInstanceOf[AzureGen2FileStore].getFileSystemClient
+  private[nio] def toFileClient = {
+    val fileStoreClient = this.parentFileSystem.getFileStore(fileStoreName).asInstanceOf[AzureGen2FileStore].getFileStoreClient
     val blobName = this.withoutRoot
-    if (blobName.isEmpty) throw new IOException("Cannot get a blob client to a path that only contains the root or is an empty path")
-    fileSystemClient.getFileClient(blobName)
+    if (blobName.isEmpty)
+      throw new IOException("Cannot get a blob client to a path that only contains the root or is an empty path")
+
+    if (blobName.endsWith("/"))
+      throw new IOException("Cannot get a file client to a dir path")
+
+    fileStoreClient.getFileClient(blobName)
+  }
+
+  @throws[IOException]
+  private[nio] def toDirectoryClient = {
+    val fileStoreClient = this.parentFileSystem.getFileStore(fileStoreName).asInstanceOf[AzureGen2FileStore].getFileStoreClient
+    val blobName = this.withoutRoot
+    if (blobName.isEmpty)
+      throw new IOException("Cannot get a blob client to a path that only contains the root or is an empty path")
+
+    if (!blobName.endsWith("/"))
+      throw new IOException("Cannot get a dir client to a file path")
+
+    fileStoreClient.getDirectoryClient(blobName)
   }
 
   @throws[IOException]
@@ -558,8 +550,7 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: Stri
     if (root == null)
       throw LoggingUtility.logError(AzureGen2Path.logger, new IllegalStateException("Root should never be null after calling toAbsolutePath."))
 
-    val fileStoreName = this.rootToFileStore(root.toString)
-    this.parentFileSystem.getFileStore(fileStoreName).asInstanceOf[AzureGen2FileStore].getFileSystemClient
+    this.parentFileSystem.getFileStore(fileStoreName).asInstanceOf[AzureGen2FileStore].getFileStoreClient
   }
 
   /**
@@ -567,12 +558,11 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, pathString: Stri
     */
   private[nio] def isRoot = this == this.getRoot
 
-  private def withoutRoot = {
-    val root = this.getRoot
-    var str = this.pathString
-    if (root != null) str = this.pathString.substring(root.toString.length)
-    if (str.startsWith(this.parentFileSystem.getSeparator)) str = str.substring(1)
-    str
+  private[nio] def withoutRoot: String = {
+    if (this.pathString.startsWith("/"))
+      this.pathString.substring(1)
+    else
+      this.pathString
   }
 
   private def splitToElements: Array[String] = this.splitToElements(this.pathString)

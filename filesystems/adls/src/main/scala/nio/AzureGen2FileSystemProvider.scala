@@ -134,7 +134,12 @@ class AzureGen2FileSystemProvider extends FileSystemProvider {
     this.openFileSystems(accountName)
   }
 
-  override def getPath(uri: URI): Path = { getFileSystem(uri).getPath(uri.getPath) }
+  override def getPath(uri: URI): Path = {
+    val fileSystemName = extractFileSystemName(uri)
+    getFileSystem(uri)
+      .asInstanceOf[AzureGen2FileSystem]
+      .getPathByFileStore(fileSystemName, uri.getPath)
+  }
 
 //  override def newInputStream(path: Path, options: OpenOption*): InputStream = ???
 //  override def newOutputStream(path: Path, options: OpenOption*): OutputStream = ???
@@ -308,7 +313,7 @@ class AzureGen2FileSystemProvider extends FileSystemProvider {
     val fullPath = extractFullPathName(path.toUri)
 
     if (isDir(path)) {
-      AzureGen2DirClient(azureGen2Path.toFileSystemClient.getDirectoryClient(fullPath))
+      AzureGen2DirClient(azureGen2Path.toDirectoryClient)
     } else {
       AzureGen2FileClient(azureGen2Path.toFileClient)
     }

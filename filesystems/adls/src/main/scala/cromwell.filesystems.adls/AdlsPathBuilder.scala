@@ -122,21 +122,16 @@ class AdlsPathBuilder(client: DataLakeServiceClient, storageAccount: String) ext
 
 case class AdlsPath private[adls](nioPath: NioPath,
                                   storageAccount: String,
-                                  fs: String,
-                                  client: DataLakeFileClient
+                                  fileSystemName: String
                                  ) extends Path {
-  override protected def newPath(nioPath: NioPath): AdlsPath = AdlsPath(nioPath, storageAccount, fs, client)
+  override protected def newPath(nioPath: NioPath): AdlsPath = AdlsPath(nioPath, storageAccount, fileSystemName)
 
   override def pathAsString: String = s"abfs://$pathWithoutScheme"
 
-  override def pathWithoutScheme: String = s"$fs@$storageAccount.dfs.core.windows.net/$nioPath"
+  override def pathWithoutScheme: String = s"$fileSystemName@$storageAccount.dfs.core.windows.net${azureGen2Path.pathString}"
 
-  override def writeContent(content: String)(openOptions: OpenOptions, codec: Codec, compressPayload: Boolean)(implicit ec: ExecutionContext) = {
-    val inputStream = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8))
-    val fileSize = content.length
-    client.append(inputStream, 0, fileSize.toLong)
-    client.flush(fileSize.toLong)
-    inputStream.close()
-    this
+  def azureGen2Path: AzureGen2Path = nioPath match {
+    case azureGen2Path: AzureGen2Path => azureGen2Path
+    case _ => throw new RuntimeException(s"Internal path was not a cloud storage path: $nioPath")
   }
 }

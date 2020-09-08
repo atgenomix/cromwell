@@ -217,7 +217,7 @@ case class AzureGen2FileSystem(
     */
   override def getRootDirectories: Iterable[Path] = {
     this.fileStores.values.map { store =>
-      this.getPath(store.name() + AzureGen2FileSystem.ROOT_DIR_SUFFIX)
+      new AzureGen2Path(this, store.name, "")
     }
   }
 
@@ -266,9 +266,12 @@ case class AzureGen2FileSystem(
     * @throws InvalidPathException if the path string cannot be converted.
     */
   override def getPath(first: String, more: String*) = {
-    new AzureGen2Path(this, more.foldLeft(first)(_ ++ _))
+    new AzureGen2Path(this, defaultFileStore.name(), more.foldLeft(first)(_ ++ _))
   }
 
+  def getPathByFileStore(fileStoreName: String, first: String, more: String*) = {
+    new AzureGen2Path(this, fileStoreName, more.foldLeft(first)(_ ++ _))
+  }
   /**
     * Unsupported.
     *
