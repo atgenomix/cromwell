@@ -56,7 +56,7 @@ object AdlsPathBuilder {
 
   // Tries to extract a file system name out of the provided string
   private def getAccountAndFileSystem(string: String): Option[(String, String)] = string match {
-    case AbfsFileSystemPattern(fileSystem, account) => Option(account, fileSystem)
+    case AbfsFileSystemPattern(fileSystem, account) => Option(account -> fileSystem)
     case _ => None
   }
 

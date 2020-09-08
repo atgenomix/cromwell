@@ -65,11 +65,12 @@ object AzureConfiguration {
       }
 
       def clientSecretCredentialAuth(name: String, authConfig: Config): ErrorOr[AzureAuthMode] = validate {
+        val accountName = authConfig.getString("account-name")
         val tenant = authConfig.getString("tenant")
         val clientId = authConfig.getString("client-id")
         val secret = authConfig.getString("secret")
 
-        ClientSecretCredentialMode(name, tenant, clientId, secret)
+        ClientSecretCredentialMode(name, accountName, tenant, clientId, secret)
       }
 
       val name = authConfig.getString("name")

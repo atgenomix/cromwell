@@ -577,6 +577,4 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, fileStoreName: S
 
     arr
   }
-
-  private def rootToFileStore(root: String) = root.substring(0, root.length - 1) // Remove the ROOT_DIR_SUFFIX
 }

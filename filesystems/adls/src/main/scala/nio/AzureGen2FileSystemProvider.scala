@@ -326,7 +326,6 @@ class AzureGen2FileSystemProvider extends FileSystemProvider {
 
   private  def getClient(path: Path): AzureGen2Client = {
     val azureGen2Path = toAzureGen2Path(path)
-    val fullPath = extractFullPathName(path.toUri)
 
     if (isDir(path)) {
       AzureGen2DirClient(azureGen2Path.toDirectoryClient)

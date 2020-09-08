@@ -8,7 +8,7 @@ import java.util
 
 import com.azure.core.http.policy.HttpLogDetailLevel
 import com.azure.core.util.logging.ClientLogger
-import com.azure.identity.{ClientSecretCredential, ClientSecretCredentialBuilder}
+import com.azure.identity.ClientSecretCredential
 import com.azure.storage.blob.nio.{AzureBasicFileAttributeView, AzureBlobFileAttributeView}
 import com.azure.storage.common.StorageSharedKeyCredential
 import com.azure.storage.common.policy.{RequestRetryOptions, RetryPolicyType}
