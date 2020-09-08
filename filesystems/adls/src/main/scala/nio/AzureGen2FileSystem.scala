@@ -218,10 +218,12 @@ case class AzureGen2FileSystem(
     *
     * @return an object to iterate over the paths of the root directories
     */
-  override def getRootDirectories: Iterable[Path] = {
-    this.fileStores.values.map { store =>
-      new AzureGen2Path(this, store.name, "")
-    }
+  override def getRootDirectories: java.lang.Iterable[Path] = {
+    this
+      .fileStores
+      .values
+      .map { store => new AzureGen2Path(this, store.name, "").asInstanceOf[Path] }
+      .asJava
   }
 
   /**
@@ -234,8 +236,8 @@ case class AzureGen2FileSystem(
     * deleted or otherwise becomes unavailable, its root directory will still be returned but operations to it will
     * fail.
     */
-  override def getFileStores: Iterable[FileStore] = {
-    this.fileStores.values
+  override def getFileStores: java.lang.Iterable[FileStore] = {
+    this.fileStores.values.asJava
   }
 
   /**
