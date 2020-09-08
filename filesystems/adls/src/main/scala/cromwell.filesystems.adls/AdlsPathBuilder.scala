@@ -12,44 +12,26 @@
   */
 package cromwell.filesystems.adls
 
-import java.io.ByteArrayInputStream
 import java.net.URI
-import java.nio.charset.StandardCharsets
 
-import better.files.File.OpenOptions
-import com.azure.storage.file.datalake.{DataLakeFileClient, DataLakeServiceClient}
 import com.google.common.net.UrlEscapers
-import cromwell.cloudsupport.azure.adls.AdlsStorage
-import cromwell.cloudsupport.azure.auth.AzureAuthMode
+import com.typesafe.config.Config
+import cromwell.cloudsupport.azure.auth.{AzureAuthMode, ClientSecretCredentialMode, SharedKeyCredentialMode}
 import cromwell.core.WorkflowOptions
 import cromwell.core.path.{NioPath, Path, PathBuilder}
 import cromwell.filesystems.adls.AdlsPathBuilder.{InvalidAdlsPath, PossiblyValidRelativeAdlsPath, ValidFullAdlsPath, _}
+import nio.{AzureGen2FileSystem, AzureGen2FileSystemProvider, AzureGen2Path}
 
+import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
-import scala.io.Codec
 import scala.language.postfixOps
-import scala.util.{Failure, Try}
+import scala.util.{Failure, Success, Try}
 
 object AdlsPathBuilder {
-
-  // Provides some level of validation of bucket names
-  // This is meant to alert the user early if they mistyped a path in their workflow / inputs and not to validate
-  // exact file system syntax.
-  // See https://docs.aws.amazon.com/AmazonAdls/latest/dev/BucketRestrictions.html
-  val AbfsFileSystemPattern =
-    """
-      (?x)                                      # Turn on comments and whitespace insensitivity
-      ^abfs://
-      (                                         # Begin capturing group for bucket name
-        [a-z0-9][a-z0-9-_\.]+[a-z0-9]           # Regex for bucket name - soft validation, see comment above
-      )                                         # End capturing group for bucket name
-      (?:
-        /.*                                     # No validation here
-      )?
-    """.trim.r
+  val AbfsFileSystemPattern = "abfs[s]?://([0-9a-zA-Z-_]+)@([0-9a-zA-Z-_]+).dfs.core.windows.net/.+".r
 
   sealed trait AdlsPathValidation
-  case class ValidFullAdlsPath(bucket: String, path: String) extends AdlsPathValidation
+  case class ValidFullAdlsPath(account: String, fileSystem: String, path: String) extends AdlsPathValidation
   case object PossiblyValidRelativeAdlsPath extends AdlsPathValidation
   sealed trait InvalidAdlsPath extends AdlsPathValidation {
     def pathString: String
@@ -72,9 +54,9 @@ object AdlsPathBuilder {
       List(s"The specified Azure Data Lake Storage Gen2 path '$pathString' does not parse as a URI.", throwable.getMessage).mkString("\n")
   }
 
-  // Tries to extract a bucket name out of the provided string
-  private def softBucketParsing(string: String): Option[String] = string match {
-    case AbfsFileSystemPattern(bucket) => Option(bucket)
+  // Tries to extract a file system name out of the provided string
+  private def getAccountAndFileSystem(string: String): Option[(String, String)] = string match {
+    case AbfsFileSystemPattern(fileSystem, account) => Option(account, fileSystem)
     case _ => None
   }
 
@@ -84,33 +66,50 @@ object AdlsPathBuilder {
   def validateAdlsPath(string: String): AdlsPathValidation = {
     Try {
       val uri = pathToUri(string)
-      if (uri.getScheme == null) { PossiblyValidRelativeAdlsPath }
-      else if (uri.getScheme.equalsIgnoreCase("abfs")) {
-        if (uri.getHost == null) {
-          softBucketParsing(string) map { ValidFullAdlsPath(_, uri.getPath) } getOrElse InvalidFullAdlsPath(string)
-        } else { ValidFullAdlsPath(uri.getHost, uri.getPath) }
-      } else { InvalidScheme(string) }
+      val scheme = uri.getScheme
+      if (uri.getScheme == null) {
+        PossiblyValidRelativeAdlsPath
+      }
+      else if (scheme.equalsIgnoreCase("abfs") || scheme.equalsIgnoreCase("abfss")) {
+        if (uri.getHost != null) {
+          getAccountAndFileSystem(string) map {
+            case (account, fs) => ValidFullAdlsPath(account, fs, uri.getPath)
+          } getOrElse InvalidFullAdlsPath(string)
+        } else {
+          InvalidScheme(string)
+        }
+      } else {
+        InvalidScheme(string)
+      }
     } recover { case t => UnparseableAdlsPath(string, t) } get
   }
 
   def fromAuthMode(authMode: AzureAuthMode,
                    options: WorkflowOptions,
-                   storageAccount: String)(implicit ec: ExecutionContext): Future[AdlsPathBuilder] = {
-    val client = AdlsStorage.adlsClient(authMode.credential(), storageAccount)
-    Future(new AdlsPathBuilder(client, storageAccount))
+                   backendConfig: Config
+                  )(implicit ec: ExecutionContext): Future[AdlsPathBuilder] = {
+    Future(new AdlsPathBuilder(authMode, backendConfig: Config))
   }
 }
 
-class AdlsPathBuilder(client: DataLakeServiceClient, storageAccount: String) extends PathBuilder {
+class AdlsPathBuilder(authMode: AzureAuthMode, backendConfig: Config) extends PathBuilder {
   // Tries to create a new AdlsPath from a String representing an absolute adls path: abfs://<file system>/<account name>.dfs.core.windows.net[/<path>].
   def build(string: String): Try[AdlsPath] = {
+    val storageAccount = authMode.accountName
+
     validateAdlsPath(string) match {
-      case ValidFullAdlsPath(fileSystem, uri) =>
-        Try {
-          val path = uri.stripPrefix(s"@$storageAccount.dfs.core.windows.net/")
-          val fileClient = client.createFileSystem(fileSystem)
-            .createFile(path, true)
-          AdlsPath(java.nio.file.Paths.get(path), storageAccount, fileSystem, fileClient)
+      case ValidFullAdlsPath(accountName, fileStoreName, path) =>
+        if (accountName != storageAccount) {
+          Failure(new IllegalArgumentException(s"Invalid storage account: $accountName"))
+        } else {
+          val provider = authMode match {
+            case _: SharedKeyCredentialMode => AzureGen2FileSystemProvider(accountName, authMode.sharedKeyCredential().get)
+            case _: ClientSecretCredentialMode => AzureGen2FileSystemProvider(accountName, authMode.credential().get)
+          }
+          val configMap = backendConfig.root().keySet().asScala.map(k => k -> backendConfig.getString(k)).toMap.asJava
+          val fileSystem: AzureGen2FileSystem = provider.getOrCreateFileSystem(accountName, configMap).asInstanceOf[AzureGen2FileSystem]
+          val azureGen2Path = AzureGen2Path(fileSystem, fileStoreName, path)
+          Success(AdlsPath(azureGen2Path, accountName, fileStoreName))
         }
       case PossiblyValidRelativeAdlsPath => Failure(new IllegalArgumentException(s"$string does not have a Azure Data Lake Storage Gen2 scheme"))
       case invalid: InvalidAdlsPath => Failure(new IllegalArgumentException(invalid.errorMessage))

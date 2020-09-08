@@ -89,7 +89,7 @@ object AzureGen2FileSystem {
             config: Map[String, _]): AzureGen2FileSystem = {
     val endpoint = "https://" + accountName + ".dfs.core.windows.net"
     val retryOptions = getRetryOptions(config)
-    val logLevel = config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_HTTP_LOG_DETAIL_LEVEL, HttpLogDetailLevel.BASIC)
+    val logLevel: HttpLogDetailLevel = config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_HTTP_LOG_DETAIL_LEVEL, HttpLogDetailLevel.BASIC)
       .asInstanceOf[HttpLogDetailLevel]
 
     val client = new DataLakeServiceClientBuilder()
@@ -108,7 +108,7 @@ object AzureGen2FileSystem {
             config: Map[String, _]): AzureGen2FileSystem = {
     val endpoint = "https://" + accountName + ".dfs.core.windows.net"
     val retryOptions = getRetryOptions(config)
-    val logLevel = config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_HTTP_LOG_DETAIL_LEVEL, HttpLogDetailLevel.BASIC)
+    val logLevel: HttpLogDetailLevel = config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_HTTP_LOG_DETAIL_LEVEL, HttpLogDetailLevel.BASIC)
       .asInstanceOf[HttpLogDetailLevel]
 
     val client = new DataLakeServiceClientBuilder()
@@ -122,6 +122,8 @@ object AzureGen2FileSystem {
   }
 }
 
+// Note: NIO file system -> Gen2 storage account
+//       NIO file store -> Gen2 file system
 case class AzureGen2FileSystem(
                                 parentFileSystemProvider: AzureGen2FileSystemProvider,
                                 dataLakeServiceClient: DataLakeServiceClient,
@@ -300,7 +302,7 @@ case class AzureGen2FileSystem(
 
   def getFileSystemName: String = this.dataLakeServiceClient.getAccountName
 
-  def getDataLakeServiceClient: DataLakeServiceClient = this.dataLakeServiceClient
+  def getFileSystemClient: DataLakeServiceClient = this.dataLakeServiceClient
 
   @throws[IOException]
   private def initializeFileStores(config: Map[String, _]): Map[String, FileStore] = {
@@ -333,10 +335,8 @@ case class AzureGen2FileSystem(
 
   override def hashCode: Int = this.getFileSystemName.hashCode
 
-  private[nio] def getDefaultDirectory = this.getPath(this.defaultFileStore.name + AzureGen2FileSystem.ROOT_DIR_SUFFIX)
-
   @throws[IOException]
-  private[nio] def getFileStore(name: String) = {
+  def getFileStore(name: String) = {
     this.fileStores.get(name) match {
       case Some(store) => store
       case None => throw LoggingUtility.logError(logger, new IOException("Invalid file store: " + name))

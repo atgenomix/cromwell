@@ -26,7 +26,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 // The constructor of this class is required to be Config, Config by cromwell
 // So, we need to take this config and get the AuthMode out of it
-final case class AdlsPathBuilderFactory private(globalConfig: Config, instanceConfig: Config, accountName: String)
+final case class AdlsPathBuilderFactory private(globalConfig: Config, instanceConfig: Config)
   extends PathBuilderFactory {
 
   // Grab the authMode out of configuration
@@ -34,15 +34,14 @@ final case class AdlsPathBuilderFactory private(globalConfig: Config, instanceCo
   val authModeAsString: String = instanceConfig.as[String]("auth")
   val authModeValidation: ErrorOr[AzureAuthMode] = conf.auth(authModeAsString)
   val authMode = authModeValidation.unsafe(s"Failed to get authentication mode for $authModeAsString")
-  val storageAccount: String = accountName
 
   def withOptions(options: WorkflowOptions)(implicit as: ActorSystem, ec: ExecutionContext): Future[AdlsPathBuilder] = {
-    AdlsPathBuilder.fromAuthMode(authMode, options, storageAccount)
+    AdlsPathBuilder.fromAuthMode(authMode, options, instanceConfig)
   }
 }
 
 object AdlsPathBuilderFactory {
-  def apply(globalConfig: Config, instanceConfig: Config, accountName: String): AdlsPathBuilderFactory = {
-    new AdlsPathBuilderFactory(globalConfig, instanceConfig, accountName: String)
+  def apply(globalConfig: Config, instanceConfig: Config): AdlsPathBuilderFactory = {
+    new AdlsPathBuilderFactory(globalConfig, instanceConfig)
   }
 }

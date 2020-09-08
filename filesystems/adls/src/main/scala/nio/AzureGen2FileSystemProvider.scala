@@ -64,6 +64,7 @@ object AzureGen2FileSystemProvider {
 
   val CACHE_CONTROL = "Cache-Control"
 
+  private val openFileSystems: TrieMap[String, FileSystem] = TrieMap[String, FileSystem]()
 
   def apply(accountName: String, sharedKeyCredential: StorageSharedKeyCredential): AzureGen2FileSystemProvider = {
     val provider = new AzureGen2FileSystemProvider {
@@ -119,19 +120,30 @@ object AzureGen2FileSystemProvider {
 
 class AzureGen2FileSystemProvider extends FileSystemProvider {
   protected val logger = new ClientLogger(classOf[AzureGen2FileSystemProvider])
-  protected val openFileSystems = TrieMap[String, FileSystem]()
 
   override def getScheme = "abfs"
   def getTlsScheme = "abfss"
 
   def pattern: Regex = "(abfs[s]?)://([0-9a-zA-Z-_]+)@([0-9a-zA-Z-_]+).dfs.core.windows.net/(.+)".r
 
+  def getOrCreateFileSystem(accountName: String, env: util.Map[String, _]): FileSystem = {
+    Try(getFileSystem(accountName)) match {
+      case Success(fs) => fs
+      case Failure(_: FileSystemNotFoundException) => newFileSystem(accountName, env)
+    }
+  }
+
   def newFileSystem(accountName: String, env: util.Map[String, _]): FileSystem
+
+  def getFileSystem(accountName: String): FileSystem = {
+    AzureGen2FileSystemProvider.openFileSystems(accountName)
+  }
+
   @throws(classOf[FileSystemNotFoundException])
   @throws(classOf[IllegalArgumentException])
   override def getFileSystem(uri: URI): FileSystem = {
     val accountName = extractAccountName(uri)
-    this.openFileSystems(accountName)
+    AzureGen2FileSystemProvider.openFileSystems(accountName)
   }
 
   override def getPath(uri: URI): Path = {
@@ -262,7 +274,7 @@ class AzureGen2FileSystemProvider extends FileSystemProvider {
   override def setAttribute(path: Path, attribute: String, value: scala.Any, options: LinkOption*): Unit = ???
 
   def closeFileSystem(fileSystemName: String): Unit = {
-    this.openFileSystems.remove(fileSystemName)
+    AzureGen2FileSystemProvider.openFileSystems.remove(fileSystemName)
     ()
   }
 
