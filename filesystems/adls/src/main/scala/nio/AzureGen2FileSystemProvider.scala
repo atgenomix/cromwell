@@ -118,7 +118,7 @@ object AzureGen2FileSystemProvider {
   }
 }
 
-class AzureGen2FileSystemProvider extends FileSystemProvider {
+trait AzureGen2FileSystemProvider extends FileSystemProvider {
   protected val logger = new ClientLogger(classOf[AzureGen2FileSystemProvider])
 
   override def getScheme = "abfs"
