@@ -13,10 +13,9 @@
 package cromwell.cloudsupport.azure.auth
 
 import com.azure.identity.{ClientSecretCredential, ClientSecretCredentialBuilder}
+import com.azure.storage.common.StorageSharedKeyCredential
 import com.google.api.client.json.jackson2.JacksonFactory
 import org.slf4j.LoggerFactory
-
-import scala.util.{Failure, Success, Try}
 
 object AzureAuthMode {
   type OptionLookup = String => String
@@ -31,65 +30,57 @@ sealed trait AzureAuthMode {
    */
   def name: String
 
-  def credential(): ClientSecretCredential
+  def accountName: String
 
-  /**
-    * Enables swapping out credential validation for various testing purposes ONLY.
-    *
-    * All traits in this file are sealed, all classes final, meaning things
-    * like Mockito or other java/scala overrides cannot work.
-    */
-  private[auth] var credentialsValidation: (ClientSecretCredential) => Unit =
-    (credential: ClientSecretCredential) => {
-      // TODO: how to do credential validation on Azure?
-      // val scope = "https://storage.azure.com/.default"
-      // val request = new TokenRequestContext()
-      // request.addScopes(scope)
-      // credential.getToken(request)
-      //   .block()
-      ()
-    }
+  def credential(): Option[ClientSecretCredential]
 
-  protected def validateCredentials(credential: ClientSecretCredential): ClientSecretCredential = {
-    Try(credentialsValidation(credential)) match {
-      case Failure(ex) => throw new RuntimeException(s"Azure credentials are invalid: ${ex.getMessage}", ex)
-      case Success(_) => credential
-    }
+  def sharedKeyCredential(): Option[StorageSharedKeyCredential]
+}
+
+/**
+  * The AzureAuthMode constructed from shared key credential.
+  *
+  * @param name
+  * @param accountName account name
+  * @param accountKey account key
+  */
+final case class SharedKeyCredentialMode(override val name: String,
+                                         override val accountName: String,
+                                         accountKey: String
+                                        ) extends AzureAuthMode {
+  override def credential(): Option[ClientSecretCredential] = None
+
+  override def sharedKeyCredential(): Option[StorageSharedKeyCredential] = {
+    val credential = new StorageSharedKeyCredential(accountName, accountKey)
+    Some(credential)
   }
 }
 
 /**
- * A mock AzureAuthMode using the anonymous credentials provider.
- */
-case object MockAuthMode extends AzureAuthMode {
-  override val name = "no_auth"
-
-  override def credential(): ClientSecretCredential = ???
-}
-
-object CustomKeyMode
-
-/**
- * The AzureAuthMode constructed from credential.
+ * The AzureAuthMode constructed from client secret credential.
  *
  * @param name
  * @param tenant tenant ID
  * @param clientId client ID
  * @param secret client secret
  */
-final case class CredentialMode(override val name: String,
-                                tenant: String,
-                                clientId: String,
-                                secret: String
-                                ) extends AzureAuthMode {
-  override def credential(): ClientSecretCredential = {
+final case class ClientSecretCredentialMode(override val name: String,
+                                            override val accountName: String,
+                                            tenant: String,
+                                            clientId: String,
+                                            secret: String
+                                           ) extends AzureAuthMode {
+  override def credential(): Option[ClientSecretCredential] = {
     val credential = new ClientSecretCredentialBuilder()
       .clientId(clientId)
       .clientSecret(secret)
       .tenantId(tenant)
       .build()
-    validateCredentials(credential)
+
+    Some(credential)
   }
+
+  override def sharedKeyCredential(): Option[StorageSharedKeyCredential] = None
 }
 
 class OptionLookupException(val key: String, cause: Throwable) extends RuntimeException(key, cause)

@@ -8,7 +8,7 @@ import java.util
 
 import com.azure.core.http.policy.HttpLogDetailLevel
 import com.azure.core.util.logging.ClientLogger
-import com.azure.identity.ClientSecretCredentialBuilder
+import com.azure.identity.{ClientSecretCredential, ClientSecretCredentialBuilder}
 import com.azure.storage.blob.nio.{AzureBasicFileAttributeView, AzureBlobFileAttributeView}
 import com.azure.storage.common.StorageSharedKeyCredential
 import com.azure.storage.common.policy.{RequestRetryOptions, RetryPolicyType}
@@ -18,13 +18,6 @@ import scala.collection.JavaConverters._
 
 object AzureGen2FileSystem {
   // Configuration constants for blob clients.
-  /**
-    * Expected type: String
-    */
-  val AZURE_STORAGE_ACCOUNT_KEY = "AzureStorageAccountKey"
-
-  val AZURE_STORAGE_SAS_TOKEN = "AzureStorageSasToken"
-
   /**
     * Expected type: com.azure.core.http.policy.HttpLogLevelDetail
     */
@@ -64,16 +57,16 @@ object AzureGen2FileSystem {
     */
   val AZURE_STORAGE_USE_HTTPS = "AzureStorageUseHttps"
 
+  /**
+    * Expected type: String
+    */
+  private val AZURE_STORAGE_FILE_STORES = "AzureStorageFileStores"
+
   val SUPPORTED_ATTRIBUTE_VIEWS = Map(
     (classOf[BasicFileAttributeView], "basic"),
     (classOf[AzureBasicFileAttributeView], "azureBasic"),
     (classOf[AzureBlobFileAttributeView], "azureBlob"))
 
-  private[nio] val AZURE_STORAGE_HTTP_CLIENT = "AzureStorageHttpClient" // undocumented; for test.
-
-  private[nio] val AZURE_STORAGE_HTTP_POLICIES = "AzureStorageHttpPolicies"
-
-  private val AZURE_STORAGE_FILE_STORES = "AzureStorageFileStores"
 
   private[nio] val PATH_SEPARATOR = "/"
 
@@ -92,10 +85,9 @@ object AzureGen2FileSystem {
 
   def apply(parentFileSystemProvider: AzureGen2FileSystemProvider,
             accountName: String,
-            accountKey: String,
+            sharedKeyCredential: StorageSharedKeyCredential,
             config: Map[String, _]): AzureGen2FileSystem = {
     val endpoint = "https://" + accountName + ".dfs.core.windows.net"
-    val sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey)
     val retryOptions = getRetryOptions(config)
     val logLevel = config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_HTTP_LOG_DETAIL_LEVEL, HttpLogDetailLevel.BASIC)
       .asInstanceOf[HttpLogDetailLevel]
@@ -112,16 +104,9 @@ object AzureGen2FileSystem {
 
   def apply(parentFileSystemProvider: AzureGen2FileSystemProvider,
             accountName: String,
-            clientId: String,
-            clientSecret: String,
-            tenantId: String,
+            credential: ClientSecretCredential,
             config: Map[String, _]): AzureGen2FileSystem = {
     val endpoint = "https://" + accountName + ".dfs.core.windows.net"
-    val credential = new ClientSecretCredentialBuilder()
-      .clientId(clientId)
-      .clientSecret(clientSecret)
-      .tenantId(tenantId)
-      .build()
     val retryOptions = getRetryOptions(config)
     val logLevel = config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_HTTP_LOG_DETAIL_LEVEL, HttpLogDetailLevel.BASIC)
       .asInstanceOf[HttpLogDetailLevel]
@@ -248,12 +233,6 @@ case class AzureGen2FileSystem(
     */
   override def getFileStores: Iterable[FileStore] = {
     this.fileStores.values
-//    this.dataLakeServiceClient
-//      .listFileSystems()
-//      .asScala
-//      .map { fs =>
-//        AzureGen2FileStore()
-//      }
   }
 
   /**

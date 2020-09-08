@@ -9,7 +9,9 @@ import java.nio.file.spi.FileSystemProvider
 import java.util
 
 import com.azure.core.util.logging.ClientLogger
+import com.azure.identity.ClientSecretCredential
 import com.azure.storage.blob.nio.{AzureBasicFileAttributeView, AzureBasicFileAttributes, AzureBlobFileAttributeView, AzureBlobFileAttributes}
+import com.azure.storage.common.StorageSharedKeyCredential
 import com.azure.storage.file.datalake.models.DataLakeStorageException
 import com.azure.storage.file.datalake.{DataLakeDirectoryClient, DataLakeFileClient}
 
@@ -62,7 +64,8 @@ object AzureGen2FileSystemProvider {
 
   val CACHE_CONTROL = "Cache-Control"
 
-  def apply(accountName: String, accountKey: String): AzureGen2FileSystemProvider = {
+
+  def apply(accountName: String, sharedKeyCredential: StorageSharedKeyCredential): AzureGen2FileSystemProvider = {
     val provider = new AzureGen2FileSystemProvider {
       @throws(classOf[FileSystemAlreadyExistsException])
       @throws(classOf[IOException])
@@ -73,16 +76,21 @@ object AzureGen2FileSystemProvider {
           case Some(_) =>
             throw LoggingUtility.logError(this.logger, new FileSystemAlreadyExistsException("Name: " + accountName))
           case None =>
-            val afs = AzureGen2FileSystem(this, accountName, accountKey, env.asScala.toMap)
+            val afs = AzureGen2FileSystem(this, accountName, sharedKeyCredential, env.asScala.toMap)
             openFileSystems.put(accountName, afs).get
         }
+      }
+
+      override def newFileSystem(accountName: String, env: util.Map[String, _]): FileSystem = {
+        val afs = AzureGen2FileSystem(this, accountName, sharedKeyCredential, env.asScala.toMap)
+        openFileSystems.put(accountName, afs).get
       }
     }
 
     provider
   }
 
-  def apply(clientId: String, clientSecret: String, tenantId: String): AzureGen2FileSystemProvider = {
+  def apply(accountName: String, credential: ClientSecretCredential): AzureGen2FileSystemProvider = {
     val provider = new AzureGen2FileSystemProvider {
       @throws(classOf[FileSystemAlreadyExistsException])
       @throws(classOf[IOException])
@@ -93,10 +101,15 @@ object AzureGen2FileSystemProvider {
           case Some(_) =>
             throw LoggingUtility.logError(this.logger, new FileSystemAlreadyExistsException("Name: " + accountName))
           case None =>
-            val afs = AzureGen2FileSystem(this, accountName, clientId, clientSecret, tenantId, env.asScala.toMap)
+            val afs = AzureGen2FileSystem(this, accountName, credential, env.asScala.toMap)
             openFileSystems.put(accountName, afs).get
         }
 
+      }
+
+      override def newFileSystem(accountName: String, env: util.Map[String, _]): FileSystem = {
+        val afs = AzureGen2FileSystem(this, accountName, credential, env.asScala.toMap)
+        openFileSystems.put(accountName, afs).get
       }
     }
 
@@ -113,6 +126,7 @@ class AzureGen2FileSystemProvider extends FileSystemProvider {
 
   def pattern: Regex = "(abfs[s]?)://([0-9a-zA-Z-_]+)@([0-9a-zA-Z-_]+).dfs.core.windows.net/(.+)".r
 
+  def newFileSystem(accountName: String, env: util.Map[String, _]): FileSystem
   @throws(classOf[FileSystemNotFoundException])
   @throws(classOf[IllegalArgumentException])
   override def getFileSystem(uri: URI): FileSystem = {

@@ -20,7 +20,7 @@ import com.typesafe.config.Config
 import common.exception.MessageAggregation
 import common.validation.ErrorOr._
 import common.validation.Validation._
-import cromwell.cloudsupport.azure.auth.{AzureAuthMode, CredentialMode}
+import cromwell.cloudsupport.azure.auth.{AzureAuthMode, ClientSecretCredentialMode, SharedKeyCredentialMode}
 import net.ceedubs.ficus.Ficus._
 import org.slf4j.LoggerFactory
 
@@ -57,16 +57,28 @@ object AzureConfiguration {
     val appName = validate { azureConfig.as[String]("application-name") }
 
     def buildAuth(authConfig: Config): ErrorOr[AzureAuthMode] = {
+      def sharedKeyCredentialAuth(name: String, authConfig: Config): ErrorOr[AzureAuthMode] = validate {
+        val accountName = authConfig.getString("account-name")
+        val accountKey = authConfig.getString("account-key")
 
-      def credentialAuth(name: String, tenant: String, clientId: String, secret: String): ErrorOr[AzureAuthMode] = validate {
-        CredentialMode(name, tenant, clientId, secret)
+        SharedKeyCredentialMode(name, accountName, accountKey)
       }
 
-      val tenant = authConfig.getString("tenant")
-      val clientId = authConfig.getString("client_id")
-      val secret = authConfig.getString("secret")
+      def clientSecretCredentialAuth(name: String, authConfig: Config): ErrorOr[AzureAuthMode] = validate {
+        val tenant = authConfig.getString("tenant")
+        val clientId = authConfig.getString("client-id")
+        val secret = authConfig.getString("secret")
 
-      credentialAuth("credential", tenant, clientId, secret)
+        ClientSecretCredentialMode(name, tenant, clientId, secret)
+      }
+
+      val name = authConfig.getString("name")
+      val scheme = authConfig.getString("scheme")
+      scheme match {
+        case "shared_key_credential" => sharedKeyCredentialAuth(name, authConfig)
+        case "clint_secret_credential" => clientSecretCredentialAuth(name, authConfig)
+        case wut => s"Unsupported authentication scheme: $wut".invalidNel
+      }
     }
 
     val listOfErrorOrAuths: List[ErrorOr[AzureAuthMode]] = azureConfig.as[List[Config]]("auths") map buildAuth
