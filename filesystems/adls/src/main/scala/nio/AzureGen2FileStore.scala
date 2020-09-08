@@ -9,15 +9,16 @@ import com.azure.storage.file.datalake.DataLakeFileSystemClient
 import scala.collection.JavaConverters._
 
 object AzureGen2FileStore {
-  // private val logger = new ClientLogger(classOf[AzureGen2FileStore])
   private val AZURE_FILE_STORE_TYPE = "AzureBlobContainer"
 
   def apply(parentFileSystem: AzureGen2FileSystem, fileSystemName: String): AzureGen2FileStore = {
-    val fileSystemClient = parentFileSystem.getDataLakeServiceClient.getFileSystemClient(fileSystemName)
-    if (!parentFileSystem.getDataLakeServiceClient.listFileSystems().asScala.exists(_.getName == fileSystemName))
-      fileSystemClient.create()
+    // Note: NIO file system -> Gen2 storage account
+    //       NIO file store -> Gen2 file system
+    val gen2FileSystemClient = parentFileSystem.getFileSystemClient.getFileSystemClient(fileSystemName)
+    if (!parentFileSystem.getFileSystemClient.listFileSystems().asScala.exists(_.getName == fileSystemName))
+      gen2FileSystemClient.create()
 
-    AzureGen2FileStore(parentFileSystem, fileSystemName, fileSystemClient)
+    AzureGen2FileStore(parentFileSystem, fileSystemName, gen2FileSystemClient)
   }
 }
 
@@ -95,7 +96,7 @@ case class AzureGen2FileStore(parentFileSystem: AzureGen2FileSystem, fileSystemN
     * @param type the file attribute view type
     * @return Whether the file attribute view is supported.
     */
-  override def supportsFileAttributeView(`type`: Class[_ <: FileAttributeView]): Boolean = AzureGen2FileSystem.SUPPORTED_ATTRIBUTE_VIEWS.get(`type`).isDefined
+  override def supportsFileAttributeView(`type`: Class[_ <: FileAttributeView]): Boolean = AzureGen2FileSystem.SUPPORTED_ATTRIBUTE_VIEWS.contains(`type`)
 
   /**
     * Tells whether or not this file store supports the file attributes identified by the given file attribute view.
@@ -138,5 +139,5 @@ case class AzureGen2FileStore(parentFileSystem: AzureGen2FileSystem, fileSystemN
   @throws[IOException]
   override def getAttribute(s: String):String = getFileStoreAttributeView(classOf[AzureGen2FileStoreAttributeView]).getAttribute(s)
 
-  def getFileSystemClient: DataLakeFileSystemClient = this.fileSystemClient
+  def getFileStoreClient: DataLakeFileSystemClient = this.fileSystemClient
 }
