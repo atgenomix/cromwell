@@ -130,6 +130,7 @@ class AzureGen2FileSystemProvider extends FileSystemProvider {
     Try(getFileSystem(accountName)) match {
       case Success(fs) => fs
       case Failure(_: FileSystemNotFoundException) => newFileSystem(accountName, env)
+      case Failure(ex) => throw ex
     }
   }
 
@@ -205,6 +206,9 @@ class AzureGen2FileSystemProvider extends FileSystemProvider {
           throw LoggingUtility.logError(logger, new NoSuchFileException(fullPath))
         else
           throw LoggingUtility.logError(logger, ex)
+      case Failure(ex) =>
+        logger.error(ex.getMessage)
+        throw ex
     }
   }
 
