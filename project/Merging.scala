@@ -35,6 +35,10 @@ object Merging {
           MergeStrategy.first
         case "maven" :: "com.google.guava" :: xs =>
           MergeStrategy.first
+        case "mailcap.default" :: xs =>
+          MergeStrategy.first
+        case "mimetypes.default" :: xs =>
+          MergeStrategy.first
         case _ =>
           val oldStrategy = (assemblyMergeStrategy in assembly).value
           oldStrategy(x)
@@ -56,6 +60,10 @@ object Merging {
     case PathList("google", "protobuf", _*) =>
       // Akka shading bug: https://github.com/akka/akka/issues/29456
       excludeFromJar(s"akka-protobuf-v3_2.12-${Dependencies.akkaV}.jar")
+    case PathList("javax", "activation", _*) =>
+      MergeStrategy.first
+    case PathList("com", "sun", "activation", _*) =>
+      MergeStrategy.first
     case x =>
       val oldStrategy = (assemblyMergeStrategy in assembly).value
       oldStrategy(x)
