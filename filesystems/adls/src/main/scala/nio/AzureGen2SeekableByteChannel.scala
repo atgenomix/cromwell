@@ -31,6 +31,7 @@ object AzureGen2SeekableByteChannel {
 case class AzureGen2SeekableByteChannel(path: AzureGen2Path, options: Set[_ <: OpenOption], tempFile: Path) extends SeekableByteChannel {
   private val fsClient = path.toFileClient
   private val seekable: SeekableByteChannel = this.createChannel(options)
+  private var isDirty = false
 
   private def createChannel(options: Set[_ <: OpenOption]): SeekableByteChannel = {
     Try(fsClient.readToFile(tempFile.toAbsolutePath.toString, true)) match {
@@ -56,9 +57,11 @@ case class AzureGen2SeekableByteChannel(path: AzureGen2Path, options: Set[_ <: O
         return
       }
 
-      if (options.exists(_ == StandardOpenOption.READ) && options.size == 1) return
+      if (options.exists(_ == StandardOpenOption.READ) && options.size == 1 || options.isEmpty) {
+        return
+      }
     } match {
-      case Success(_) => fsClient.uploadFromFile(tempFile.toAbsolutePath.toString, true)
+      case Success(_) => if (isDirty) fsClient.uploadFromFile(tempFile.toAbsolutePath.toString, true)
       case Failure(_) => ()
     }
 
@@ -66,9 +69,11 @@ case class AzureGen2SeekableByteChannel(path: AzureGen2Path, options: Set[_ <: O
     ()
   }
 
-
   @throws[IOException]
-  override def write(src: ByteBuffer): Int = seekable.write(src)
+  override def write(src: ByteBuffer): Int = {
+    isDirty = true
+    seekable.write(src)
+  }
 
   @throws[IOException]
   override def truncate(size: Long): SeekableByteChannel = seekable.truncate(size)
