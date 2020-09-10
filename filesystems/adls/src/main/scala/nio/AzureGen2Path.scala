@@ -263,13 +263,29 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, fileStoreName: S
       }
       // Root path. We never push "..".
       // Cannot go higher than root. Ignore.
-      else if (element == ".." && (stack.isEmpty || stack.peekLast() != rootStr)) {
-        stack.removeLast()
+      else if (element == "..") {
+        if (rootStr != null) {
+          // Root path. We never push "..".
+          if (!stack.isEmpty && stack.peekLast == rootStr) {
+            // Cannot go higher than root. Ignore.
+            ()
+          }
+          else {
+            stack.removeLast()
+          }
+        }
+        else {
+          // Relative paths can have an arbitrary number of ".." at the beginning.
+          if (stack.isEmpty)
+            stack.addLast(element)
+          else if (stack.peek == "..")
+            stack.addLast(element)
+          else
+            stack.removeLast()
+        }
       }
       else {
-        if (stack.isEmpty) stack.addLast(element)
-        else if (stack.peek == "..") stack.addLast(element)
-        else stack.removeLast()
+        stack.addLast(element)
       }
     }
     this.parentFileSystem.getPathByFileStore(fileStoreName, "", stack.toArray(new Array[String](0)): _*)
