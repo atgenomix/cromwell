@@ -568,7 +568,7 @@ case class AzureGen2Path(parentFileSystem: AzureGen2FileSystem, fileStoreName: S
   private def splitToElements: Array[String] = this.splitToElements(this.pathString)
 
   private def splitToElements(str: String): Array[String] = {
-    val arr = str.split(this.parentFileSystem.getSeparator)
+    val arr = str.split(this.parentFileSystem.getSeparator).filter(_.nonEmpty)
     /*
      * This is a special case where we split after removing the root from a path that is just the root. Or otherwise
      * have an empty path.
