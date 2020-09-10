@@ -9,31 +9,37 @@ import java.nio.file._
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
-case class AzureGen2SeekableByteChannel(path: AzureGen2Path, options: Set[_ <: OpenOption]) extends SeekableByteChannel {
-
-  private val fsClient = path.toFileClient
-  private val seekable: SeekableByteChannel = this.createChannel(path, options)
-  private var tempFile: Path = null
-
-  private def createChannel(path: AzureGen2Path, options: Set[_ <: OpenOption]): SeekableByteChannel = {
+object AzureGen2SeekableByteChannel {
+  private def isExists(path: AzureGen2Path, options: Set[_ <: OpenOption]): Unit = {
+    val fsClient = path.toFileClient
     val exists = fsClient.exists()
 
     if (exists && options.exists(_ == StandardOpenOption.CREATE_NEW))
       throw new FileAlreadyExistsException(format("target already exists: %s", path))
     else if (!exists && !options.exists(_ == StandardOpenOption.CREATE_NEW) && !options.exists(_ == StandardOpenOption.CREATE))
       throw new NoSuchFileException(format("target not exists: %s", path))
+  }
 
-    this.tempFile = Files.createTempFile(path.getFileName.toString, "")
-    if (exists) {
-      Try(fsClient.readToFile(tempFile.toUri.getPath, true)) match {
-        case Success(_) => ()
-        case Failure(_) => Files.deleteIfExists(tempFile)
-      }
+  def apply(path: AzureGen2Path, options: Set[_ <: OpenOption]): AzureGen2SeekableByteChannel = {
+    isExists(path, options)
+
+    val tempFile = Files.createTempFile(path.getFileName.toString, "")
+    AzureGen2SeekableByteChannel(path, options, tempFile)
+  }
+}
+
+case class AzureGen2SeekableByteChannel(path: AzureGen2Path, options: Set[_ <: OpenOption], tempFile: Path) extends SeekableByteChannel {
+  private val fsClient = path.toFileClient
+  private val seekable: SeekableByteChannel = this.createChannel(options)
+
+  private def createChannel(options: Set[_ <: OpenOption]): SeekableByteChannel = {
+    Try(fsClient.readToFile(tempFile.toAbsolutePath.toString, true)) match {
+      case Success(_) => ()
+      case Failure(_) => Files.deleteIfExists(tempFile)
     }
 
     Files.newByteChannel(tempFile, options.filterNot(_ == StandardOpenOption.CREATE_NEW).asJava)
   }
-
 
   override def isOpen: Boolean = seekable.isOpen
 
@@ -52,7 +58,7 @@ case class AzureGen2SeekableByteChannel(path: AzureGen2Path, options: Set[_ <: O
 
       if (options.exists(_ == StandardOpenOption.READ) && options.size == 1) return
     } match {
-      case Success(_) => fsClient.uploadFromFile(tempFile.toUri.getPath, true)
+      case Success(_) => fsClient.uploadFromFile(tempFile.toAbsolutePath.toString, true)
       case Failure(_) => ()
     }
 
