@@ -4,7 +4,7 @@ import java.io.IOException
 import java.net.URI
 import java.nio.channels.{FileChannel, SeekableByteChannel}
 import java.nio.file._
-import java.nio.file.attribute.{BasicFileAttributeView, BasicFileAttributes, FileAttribute, FileAttributeView}
+import java.nio.file.attribute.{BasicFileAttributes, FileAttribute, FileAttributeView}
 import java.nio.file.spi.FileSystemProvider
 import java.util
 
@@ -14,6 +14,7 @@ import com.azure.storage.blob.nio.{AzureBasicFileAttributeView, AzureBasicFileAt
 import com.azure.storage.common.StorageSharedKeyCredential
 import com.azure.storage.file.datalake.models.DataLakeStorageException
 import com.azure.storage.file.datalake.{DataLakeDirectoryClient, DataLakeFileClient}
+import com.typesafe.config.Config
 
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
@@ -82,8 +83,8 @@ object AzureGen2FileSystemProvider {
         }
       }
 
-      override def newFileSystem(accountName: String, env: util.Map[String, _]): FileSystem = {
-        val afs = AzureGen2FileSystem(this, accountName, sharedKeyCredential, env.asScala.toMap)
+      override def newFileSystem(accountName: String, env: Map[String, Any]): FileSystem = {
+        val afs = AzureGen2FileSystem(this, accountName, sharedKeyCredential, env)
         openFileSystems.put(accountName, afs).get
       }
     }
@@ -108,8 +109,8 @@ object AzureGen2FileSystemProvider {
 
       }
 
-      override def newFileSystem(accountName: String, env: util.Map[String, _]): FileSystem = {
-        val afs = AzureGen2FileSystem(this, accountName, credential, env.asScala.toMap)
+      override def newFileSystem(accountName: String, env: Map[String, Any]): FileSystem = {
+        val afs = AzureGen2FileSystem(this, accountName, credential, env)
         openFileSystems.put(accountName, afs).get
       }
     }
@@ -126,15 +127,17 @@ trait AzureGen2FileSystemProvider extends FileSystemProvider {
 
   def pattern: Regex = "(abfs[s]?)://([0-9a-zA-Z-_]+)@([0-9a-zA-Z-_]+).dfs.core.windows.net/(.+)".r
 
-  def getOrCreateFileSystem(accountName: String, env: util.Map[String, _]): FileSystem = {
+  def getOrCreateFileSystem(accountName: String, storageConfig: Config): FileSystem = {
     Try(getFileSystem(accountName)) match {
       case Success(fs) => fs
-      case Failure(_: FileSystemNotFoundException) => newFileSystem(accountName, env)
+      case Failure(_: NoSuchElementException) =>
+        val env = storageConfig.root().keySet().asScala.map(k => k -> storageConfig.getAnyRef(k)).toMap
+        newFileSystem(accountName, env)
       case Failure(ex) => throw ex
     }
   }
 
-  def newFileSystem(accountName: String, env: util.Map[String, _]): FileSystem
+  def newFileSystem(accountName: String, env: Map[String, Any]): FileSystem
 
   def getFileSystem(accountName: String): FileSystem = {
     AzureGen2FileSystemProvider.openFileSystems(accountName)

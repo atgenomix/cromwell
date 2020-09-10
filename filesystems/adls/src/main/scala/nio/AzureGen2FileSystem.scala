@@ -13,6 +13,7 @@ import com.azure.storage.blob.nio.{AzureBasicFileAttributeView, AzureBlobFileAtt
 import com.azure.storage.common.StorageSharedKeyCredential
 import com.azure.storage.common.policy.{RequestRetryOptions, RetryPolicyType}
 import com.azure.storage.file.datalake.{DataLakeServiceClient, DataLakeServiceClientBuilder}
+import cromwell.filesystems.adls.AdlsPathBuilder
 
 import scala.collection.JavaConverters._
 
@@ -77,8 +78,8 @@ object AzureGen2FileSystem {
       config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_RETRY_POLICY_TYPE, RetryPolicyType.EXPONENTIAL).asInstanceOf[RetryPolicyType],
       config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_MAX_TRIES, 4).asInstanceOf[Integer],
       config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_TRY_TIMEOUT, 60).asInstanceOf[Integer],
-      config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_RETRY_DELAY_IN_MS, 4L).asInstanceOf[Long],
-      config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_MAX_RETRY_DELAY_IN_MS, 120L).asInstanceOf[Long],
+      config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_RETRY_DELAY_IN_MS, 4L).asInstanceOf[Number].longValue(),
+      config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_MAX_RETRY_DELAY_IN_MS, 120L).asInstanceOf[Number].longValue(),
       config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_SECONDARY_HOST, "").asInstanceOf[String])
   }
 
@@ -88,9 +89,8 @@ object AzureGen2FileSystem {
             config: Map[String, Any]): AzureGen2FileSystem = {
     val endpoint = "https://" + accountName + ".dfs.core.windows.net"
     val retryOptions = getRetryOptions(config)
-    val logLevel: HttpLogDetailLevel = config
-      .getOrElse(AzureGen2FileSystem.AZURE_STORAGE_HTTP_LOG_DETAIL_LEVEL, HttpLogDetailLevel.BASIC)
-      .asInstanceOf[HttpLogDetailLevel]
+    val logLevel: HttpLogDetailLevel = HttpLogDetailLevel.valueOf(
+      config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_HTTP_LOG_DETAIL_LEVEL, "BASIC").asInstanceOf[String])
 
     val client = new DataLakeServiceClientBuilder()
       .credential(sharedKeyCredential)
@@ -108,9 +108,8 @@ object AzureGen2FileSystem {
             config: Map[String, Any]): AzureGen2FileSystem = {
     val endpoint = "https://" + accountName + ".dfs.core.windows.net"
     val retryOptions = getRetryOptions(config)
-    val logLevel: HttpLogDetailLevel = config
-      .getOrElse(AzureGen2FileSystem.AZURE_STORAGE_HTTP_LOG_DETAIL_LEVEL, HttpLogDetailLevel.BASIC)
-      .asInstanceOf[HttpLogDetailLevel]
+    val logLevel: HttpLogDetailLevel = HttpLogDetailLevel.valueOf(
+      config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_HTTP_LOG_DETAIL_LEVEL, "BASIC").asInstanceOf[String])
 
     val client = new DataLakeServiceClientBuilder()
       .credential(credential)
@@ -125,10 +124,9 @@ object AzureGen2FileSystem {
 
 // Note: NIO file system -> Gen2 storage account
 //       NIO file store -> Gen2 file system
-case class AzureGen2FileSystem(
-                                parentFileSystemProvider: AzureGen2FileSystemProvider,
-                                dataLakeServiceClient: DataLakeServiceClient,
-                                config: Map[String, _]) extends FileSystem {
+case class AzureGen2FileSystem(parentFileSystemProvider: AzureGen2FileSystemProvider,
+                               dataLakeServiceClient: DataLakeServiceClient,
+                               config: Map[String, Any]) extends FileSystem {
   private val logger = new ClientLogger(classOf[AzureGen2FileSystem])
 
   val requiredCfg = Set(
@@ -136,14 +134,14 @@ case class AzureGen2FileSystem(
     AzureGen2FileSystem.AZURE_STORAGE_PUT_BLOB_THRESHOLD,
     AzureGen2FileSystem.AZURE_STORAGE_MAX_CONCURRENCY_PER_REQUEST,
     AzureGen2FileSystem.AZURE_STORAGE_DOWNLOAD_RESUME_RETRIES)
-  if (!config.keySet.subsetOf(requiredCfg))
+  if (!requiredCfg.subsetOf(config.keySet))
     LoggingUtility.logError(
       logger,
       new IllegalArgumentException("There was an error parsing the " + "configurations map. Please ensure all fields are set to a legal value of the correct type."))
 
-  private val blockSize = config.get(AzureGen2FileSystem.AZURE_STORAGE_UPLOAD_BLOCK_SIZE).asInstanceOf[Long]
-  private val putBlobThreshold = config.get(AzureGen2FileSystem.AZURE_STORAGE_PUT_BLOB_THRESHOLD).asInstanceOf[Long]
-  private val maxConcurrencyPerRequest = config.get(AzureGen2FileSystem.AZURE_STORAGE_MAX_CONCURRENCY_PER_REQUEST).asInstanceOf[Integer]
+  private val blockSize = config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_UPLOAD_BLOCK_SIZE, 512L).asInstanceOf[Number].longValue()
+  private val putBlobThreshold = config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_PUT_BLOB_THRESHOLD, 10L).asInstanceOf[Number].longValue()
+  private val maxConcurrencyPerRequest = config.getOrElse(AzureGen2FileSystem.AZURE_STORAGE_MAX_CONCURRENCY_PER_REQUEST, 10).asInstanceOf[Integer]
   private var defaultFileStore: FileStore = _
   private val fileStores: Map[String, FileStore] = initializeFileStores(config)
   private var closed = false
@@ -308,7 +306,7 @@ case class AzureGen2FileSystem(
   def getFileSystemClient: DataLakeServiceClient = this.dataLakeServiceClient
 
   @throws[IOException]
-  private def initializeFileStores(config: Map[String, _]): Map[String, FileStore] = {
+  private def initializeFileStores(config: Map[String, Any]): Map[String, FileStore] = {
     var fileStores = Map[String, FileStore]()
     val fileStoreNames = config.get(AzureGen2FileSystem.AZURE_STORAGE_FILE_STORES).asInstanceOf[Option[String]]
 

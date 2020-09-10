@@ -22,7 +22,6 @@ import cromwell.core.path.{NioPath, Path, PathBuilder}
 import cromwell.filesystems.adls.AdlsPathBuilder.{InvalidAdlsPath, PossiblyValidRelativeAdlsPath, ValidFullAdlsPath, _}
 import nio.{AzureGen2FileSystem, AzureGen2FileSystemProvider, AzureGen2Path}
 
-import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
@@ -86,13 +85,13 @@ object AdlsPathBuilder {
 
   def fromAuthMode(authMode: AzureAuthMode,
                    options: WorkflowOptions,
-                   backendConfig: Config
+                   storageConfig: Config
                   )(implicit ec: ExecutionContext): Future[AdlsPathBuilder] = {
-    Future(new AdlsPathBuilder(authMode, backendConfig: Config))
+    Future(new AdlsPathBuilder(authMode, storageConfig: Config))
   }
 }
 
-class AdlsPathBuilder(authMode: AzureAuthMode, backendConfig: Config) extends PathBuilder {
+class AdlsPathBuilder(authMode: AzureAuthMode, storageConfig: Config) extends PathBuilder {
   // Tries to create a new AdlsPath from a String representing an absolute adls path: abfs://<file system>/<account name>.dfs.core.windows.net[/<path>].
   def build(string: String): Try[AdlsPath] = {
     val storageAccount = authMode.accountName
@@ -106,8 +105,7 @@ class AdlsPathBuilder(authMode: AzureAuthMode, backendConfig: Config) extends Pa
             case _: SharedKeyCredentialMode => AzureGen2FileSystemProvider(accountName, authMode.sharedKeyCredential().get)
             case _: ClientSecretCredentialMode => AzureGen2FileSystemProvider(accountName, authMode.credential().get)
           }
-          val configMap = backendConfig.root().keySet().asScala.map(k => k -> backendConfig.getString(k)).toMap.asJava
-          val fileSystem: AzureGen2FileSystem = provider.getOrCreateFileSystem(accountName, configMap).asInstanceOf[AzureGen2FileSystem]
+          val fileSystem: AzureGen2FileSystem = provider.getOrCreateFileSystem(accountName, storageConfig).asInstanceOf[AzureGen2FileSystem]
           val azureGen2Path = AzureGen2Path(fileSystem, fileStoreName, path)
           Success(AdlsPath(azureGen2Path, accountName, fileStoreName))
         }

@@ -24,8 +24,9 @@ import cromwell.cloudsupport.azure.auth.{AzureAuthMode, ClientSecretCredentialMo
 import net.ceedubs.ficus.Ficus._
 import org.slf4j.LoggerFactory
 
-final case class AzureConfiguration private(applicationName: String,
-                                            authsByName: Map[String, AzureAuthMode]) {
+final case class AzureConfiguration private (applicationName: String,
+                                             authsByName: Map[String, AzureAuthMode],
+                                             storageConfig: Config) {
 
   def auth(name: String): ErrorOr[AzureAuthMode] = {
     authsByName.get(name) match {
@@ -56,6 +57,8 @@ object AzureConfiguration {
 
     val appName = validate { azureConfig.as[String]("application-name") }
 
+    val storageConfig = config.getConfig("engine").getConfig("filesystems").getConfig("adls-gen2")
+
     def buildAuth(authConfig: Config): ErrorOr[AzureAuthMode] = {
       def sharedKeyCredentialAuth(name: String, authConfig: Config): ErrorOr[AzureAuthMode] = validate {
         val accountName = authConfig.getString("account-name")
@@ -68,7 +71,7 @@ object AzureConfiguration {
         val accountName = authConfig.getString("account-name")
         val tenant = authConfig.getString("tenant")
         val clientId = authConfig.getString("client-id")
-        val secret = authConfig.getString("secret")
+        val secret = authConfig.getString("client-secret")
 
         ClientSecretCredentialMode(name, accountName, tenant, clientId, secret)
       }
@@ -96,7 +99,7 @@ object AzureConfiguration {
 
     (appName, errorOrAuthList).flatMapN { (name, list) =>
       uniqueAuthNames(list) map { _ =>
-        AzureConfiguration(name, list map { a => a.name -> a } toMap)
+        AzureConfiguration(name, list map { a => a.name -> a } toMap, storageConfig)
       }
     } match {
       case Valid(r) => r

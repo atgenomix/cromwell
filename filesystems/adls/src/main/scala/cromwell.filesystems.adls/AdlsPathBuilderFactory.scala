@@ -20,7 +20,6 @@ import cromwell.cloudsupport.azure.AzureConfiguration
 import cromwell.cloudsupport.azure.auth.AzureAuthMode
 import cromwell.core.WorkflowOptions
 import cromwell.core.path.PathBuilderFactory
-import net.ceedubs.ficus.Ficus._
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -31,12 +30,13 @@ final case class AdlsPathBuilderFactory private(globalConfig: Config, instanceCo
 
   // Grab the authMode out of configuration
   val conf: AzureConfiguration = AzureConfiguration(globalConfig)
-  val authModeAsString: String = instanceConfig.as[String]("auth")
+  // val authModeAsString: String = instanceConfig.as[String]("auth")
+  val authModeAsString: String = "account-key"
   val authModeValidation: ErrorOr[AzureAuthMode] = conf.auth(authModeAsString)
   val authMode = authModeValidation.unsafe(s"Failed to get authentication mode for $authModeAsString")
 
   def withOptions(options: WorkflowOptions)(implicit as: ActorSystem, ec: ExecutionContext): Future[AdlsPathBuilder] = {
-    AdlsPathBuilder.fromAuthMode(authMode, options, instanceConfig)
+    AdlsPathBuilder.fromAuthMode(authMode, options, conf.storageConfig)
   }
 }
 
