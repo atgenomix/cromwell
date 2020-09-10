@@ -9,26 +9,34 @@ import java.nio.{ByteBuffer, MappedByteBuffer}
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
-case class AzureGen2FileChannel(path: AzureGen2Path, options: Set[_ <: OpenOption]) extends FileChannel {
+object AzureGen2FileChannel {
 
-  private val fsClient = path.toFileClient
-  private val filechannel: FileChannel = this.createChannel(path, options)
-  private var tempFile: Path = null
-
-  private def createChannel(path: AzureGen2Path, options: Set[_ <: OpenOption]): FileChannel = {
+  private def isExists(path: AzureGen2Path, options: Set[_ <: OpenOption]): Unit = {
+    val fsClient = path.toFileClient
     val exists = fsClient.exists()
 
     if (exists && options.exists(_ == StandardOpenOption.CREATE_NEW))
       throw new FileAlreadyExistsException(format("target already exists: %s", path))
     else if (!exists && !options.exists(_ == StandardOpenOption.CREATE_NEW) && !options.exists(_ == StandardOpenOption.CREATE))
       throw new NoSuchFileException(format("target not exists: %s", path))
+  }
 
-    this.tempFile = Files.createTempFile(path.getFileName.toString, "")
-    if (exists) {
-      Try(fsClient.readToFile(tempFile.toUri.getPath, true)) match {
-        case Success(_) => ()
-        case Failure(_) => Files.deleteIfExists(tempFile)
-      }
+  def apply(path: AzureGen2Path, options: Set[_ <: OpenOption]): AzureGen2FileChannel = {
+    isExists(path, options)
+
+    val tempFile = Files.createTempFile(path.getFileName.toString, "")
+    AzureGen2FileChannel(path, options, tempFile)
+  }
+}
+
+case class AzureGen2FileChannel(path: AzureGen2Path, options: Set[_ <: OpenOption], tempFile: Path) extends FileChannel {
+  private val fsClient = path.toFileClient
+  private val filechannel: FileChannel = this.createChannel(options)
+
+  private def createChannel(options: Set[_ <: OpenOption]): FileChannel = {
+    Try(fsClient.readToFile(tempFile.toAbsolutePath.toString, true)) match {
+      case Success(_) => ()
+      case Failure(_) => Files.deleteIfExists(tempFile)
     }
 
     FileChannel.open(tempFile, options.filterNot(_ == StandardOpenOption.CREATE_NEW).asJava)
@@ -90,7 +98,7 @@ case class AzureGen2FileChannel(path: AzureGen2Path, options: Set[_ <: OpenOptio
     super.close()
     filechannel.close()
     if (!options.exists(_ == StandardOpenOption.READ))
-      fsClient.uploadFromFile(tempFile.toUri.getPath, true)
+      fsClient.uploadFromFile(tempFile.toAbsolutePath.toString, true)
 
     Files.deleteIfExists(tempFile)
     ()
