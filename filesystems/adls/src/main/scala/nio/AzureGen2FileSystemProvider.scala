@@ -79,13 +79,15 @@ object AzureGen2FileSystemProvider {
             throw LoggingUtility.logError(this.logger, new FileSystemAlreadyExistsException("Name: " + accountName))
           case None =>
             val afs = AzureGen2FileSystem(this, accountName, sharedKeyCredential, env.asScala.toMap)
-            openFileSystems.put(accountName, afs).get
+            openFileSystems.put(accountName, afs)
+            afs
         }
       }
 
       override def newFileSystem(accountName: String, env: Map[String, Any]): FileSystem = {
         val afs = AzureGen2FileSystem(this, accountName, sharedKeyCredential, env)
-        openFileSystems.put(accountName, afs).get
+        openFileSystems.put(accountName, afs)
+        afs
       }
     }
 
@@ -104,14 +106,16 @@ object AzureGen2FileSystemProvider {
             throw LoggingUtility.logError(this.logger, new FileSystemAlreadyExistsException("Name: " + accountName))
           case None =>
             val afs = AzureGen2FileSystem(this, accountName, credential, env.asScala.toMap)
-            openFileSystems.put(accountName, afs).get
+            openFileSystems.put(accountName, afs)
+            afs
         }
 
       }
 
       override def newFileSystem(accountName: String, env: Map[String, Any]): FileSystem = {
         val afs = AzureGen2FileSystem(this, accountName, credential, env)
-        openFileSystems.put(accountName, afs).get
+        openFileSystems.put(accountName, afs)
+        afs
       }
     }
 
