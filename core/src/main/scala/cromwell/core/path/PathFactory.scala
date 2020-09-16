@@ -33,6 +33,8 @@ trait PathFactory {
   /**
     * Attempts to build a Path from a String
     */
+
+  // TODO: Bookmark: build path 1
   def buildPath(string: String): Path = PathFactory.buildPath(string, pathBuilders, preMapping, postMapping)
 }
 
@@ -48,6 +50,7 @@ object PathFactory {
       case None => s"Could not parse '$string' to path. No PathBuilders were provided".invalidNel
     }
     case pb :: rest =>
+      // TODO: Bookmark: build path 3
       pb.build(string) match {
         case Success(path) =>
           path.validNel
@@ -69,6 +72,7 @@ object PathFactory {
 
     val path = for {
       preMapped <- Try(preMapping(string)).toErrorOr.contextualizeErrors(s"pre map $string")
+      // TODO: Bookmark: build path 2
       path <- findFirstSuccess(preMapped, pathBuilders, Vector.empty)
       postMapped <- Try(postMapping(path)).toErrorOr.contextualizeErrors(s"post map $path")
     } yield postMapped

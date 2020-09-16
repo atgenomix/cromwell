@@ -62,7 +62,7 @@ class StandardInitializationActor(val standardParams: StandardInitializationActo
   lazy val pathBuilders: Future[List[PathBuilder]] = standardParams.configurationDescriptor.pathBuilders(workflowDescriptor.workflowOptions)
 
   lazy val workflowPaths: Future[WorkflowPaths] = {
-    // TODO: Bookmark: pathBuilders
+    // TODO: Bookmark: build path preparation
     pathBuilders map { WorkflowPathBuilder.workflowPaths(configurationDescriptor, workflowDescriptor, _) }
   }
 

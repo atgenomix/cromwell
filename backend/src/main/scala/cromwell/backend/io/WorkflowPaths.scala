@@ -48,6 +48,7 @@ trait WorkflowPaths extends PathFactory {
   /**
     * Attempts to build a cromwell.core.Path from the String using the available Filesystems.
     */
+  // TODO: Bookmark: build path 0
   def getPath(url: String): Try[Path] = Try(buildPath(url))
 
   // Rebuild potential intermediate call directories in case of a sub workflow
