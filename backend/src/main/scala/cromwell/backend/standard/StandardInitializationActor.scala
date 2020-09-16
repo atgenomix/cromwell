@@ -61,8 +61,10 @@ class StandardInitializationActor(val standardParams: StandardInitializationActo
 
   lazy val pathBuilders: Future[List[PathBuilder]] = standardParams.configurationDescriptor.pathBuilders(workflowDescriptor.workflowOptions)
 
-  lazy val workflowPaths: Future[WorkflowPaths] =
+  lazy val workflowPaths: Future[WorkflowPaths] = {
+    // TODO: Bookmark: pathBuilders
     pathBuilders map { WorkflowPathBuilder.workflowPaths(configurationDescriptor, workflowDescriptor, _) }
+  }
 
   /**
     * Returns the runtime attribute builder for this backend.

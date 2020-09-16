@@ -132,6 +132,7 @@ trait CromwellApiService extends HttpInstrumentation with MetadataRouteSupport w
     post {
       instrumentRequest {
         entity(as[Multipart.FormData]) { formData =>
+          // TODO: Bookmark: API submit 0
           submitRequest(formData, isSingleSubmission = false)
         }
       }
@@ -215,6 +216,7 @@ trait CromwellApiService extends HttpInstrumentation with MetadataRouteSupport w
         PartialWorkflowSources.fromSubmitRoute(data, allowNoInputs = isSingleSubmission) match {
           case Success(workflowSourceFiles) if isSingleSubmission && workflowSourceFiles.size == 1 =>
             val warnings = workflowSourceFiles.flatMap(_.warnings)
+            // TODO: Bookmark: API submit 1
             askSubmit(WorkflowStoreActor.SubmitWorkflow(workflowSourceFiles.head), warnings, getWorkflowState(workflowSourceFiles.head.workflowOnHold))
           // Catches the case where someone has gone through the single submission endpoint w/ more than one workflow
           case Success(workflowSourceFiles) if isSingleSubmission =>

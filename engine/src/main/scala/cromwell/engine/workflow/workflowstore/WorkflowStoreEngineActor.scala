@@ -67,6 +67,8 @@ final case class WorkflowStoreEngineActor private(store: WorkflowStore,
       if (stateData.currentOperation.nonEmpty || stateData.pendingOperations.nonEmpty) {
         log.error("Non-empty WorkflowStoreActorData when in Idle state: {}", stateData)
       }
+      // TODO: Bookmark: wait to fetch workflow
+      // TODO: Bookmark: try to fetch workflow 2
       startNewWork(cmd, sender, stateData.withCurrentCommand(cmd, sender))
   }
 
@@ -118,6 +120,7 @@ final case class WorkflowStoreEngineActor private(store: WorkflowStore,
             case NoNewWorkflowsToStart => log.debug("No workflows fetched by {}", workflowHeartbeatConfig.cromwellId)
             case _ => log.error("Unexpected response from newWorkflowMessage({}): {}", count, response)
           }
+          // TODO: Bookmark: try to fetch workflow 3, send to WorkflowManagerActor(in step 1, it use forward, so sender is WorkflowManagerActor)
           sndr ! response
         }
       case FindWorkflowsWithAbortRequested(cromwellId) =>

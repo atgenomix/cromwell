@@ -166,12 +166,15 @@ class WorkflowManagerActor(params: WorkflowManagerActorParams)
         Cap the total number of workflows in flight, but also make sure we don't pull too many in at once.
         Determine the number of available workflow slots and request the smaller of that number and maxWorkflowsToLaunch.
        */
+      // TODO: Bookmark: try to fetch workflow 0
       val maxNewWorkflows = maxWorkflowsToLaunch min (maxWorkflowsRunning - stateData.workflows.size - stateData.subWorkflows.size)
       params.workflowStore ! WorkflowStoreActor.FetchRunnableWorkflows(maxNewWorkflows)
       stay()
     case Event(WorkflowStoreEngineActor.NoNewWorkflowsToStart, _) =>
       log.debug("WorkflowStore provided no new workflows to start")
       stay()
+    // TODO: Bookmark: try to fetch workflow 4
+    // TODO: Bookmark: start workflow 0
     case Event(WorkflowStoreEngineActor.NewWorkflowsToStart(newWorkflows), stateData) =>
       val newSubmissions = newWorkflows map submitWorkflow
       log.info("Retrieved {} workflows from the WorkflowStoreActor", newSubmissions.toList.size)
@@ -318,6 +321,7 @@ class WorkflowManagerActor(params: WorkflowManagerActorParams)
     val wfActor = context.actorOf(wfProps, name = s"WorkflowActor-$workflowId")
 
     wfActor ! SubscribeTransitionCallBack(self)
+    // TODO: Bookmark: start workflow 1
     wfActor ! StartWorkflowCommand
     logger.info(s"$tag Successfully started ${wfActor.path.name}")
     WorkflowIdToActorRef(workflowId, wfActor)

@@ -276,6 +276,7 @@ class WorkflowActor(workflowToStart: WorkflowToStart,
       val actor = context.actorOf(MaterializeWorkflowDescriptorActor.props(serviceRegistryActor, workflowId, importLocalFilesystem = !serverMode, ioActorProxy = ioActor, hogGroup = hogGroup),
         "MaterializeWorkflowDescriptorActor")
       pushWorkflowStart(workflowId)
+      // TODO: Bookmark: runJob 0.0
       actor ! MaterializeWorkflowDescriptorCommand(sources, conf, callCachingEnabled, invalidateBadCacheResults)
       goto(MaterializingWorkflowDescriptorState) using stateData.copy(currentLifecycleStateActor = Option(actor))
     // If the workflow is not being restarted then we can abort it immediately as nothing happened yet
@@ -298,6 +299,8 @@ class WorkflowActor(workflowToStart: WorkflowToStart,
           restarting
         ),
         name = s"WorkflowInitializationActor-$workflowId")
+      // TODO: Bookmark: workflow initialize 0
+      // TODO: Bookmark: runJob 0.1
       initializerActor ! StartInitializationCommand
       goto(InitializingWorkflowState) using data.copy(currentLifecycleStateActor = Option(initializerActor), workflowDescriptor = Option(workflowDescriptor))
     case Event(MaterializeWorkflowDescriptorFailureResponse(reason: Throwable), data) =>
@@ -330,6 +333,7 @@ class WorkflowActor(workflowToStart: WorkflowToStart,
         fileHashCacheActor = fileHashCacheActorProps map context.system.actorOf,
         blacklistCache = blacklistCache), name = s"WorkflowExecutionActor-$workflowId")
 
+      // TODO: Bookmark: runJob 0.2
       executionActor ! ExecuteWorkflowCommand
       
       val nextState = data.effectiveStartableState match {

@@ -212,6 +212,7 @@ class EngineJobExecutionActor(replyTo: ActorRef,
       effectiveCallCachingMode match {
         case activity: CallCachingActivity if activity.readFromCache => handleReadFromCacheOn(jobDescriptor, activity, updatedData)
         case activity: CallCachingActivity => handleReadFromCacheOff(jobDescriptor, activity, updatedData)
+        // TODO: Bookmark: runJob 4
         case CallCachingOff => runJob(updatedData)
       }
     case Event(CallPreparationFailed(jobKey: BackendJobDescriptorKey, throwable), NoData) =>
@@ -652,6 +653,7 @@ class EngineJobExecutionActor(replyTo: ActorRef,
     context.actorOf(data.bjeaProps, BackendJobExecutionActor.buildJobExecutionActorName(workflowIdForLogging, data.jobDescriptor.key))
   }
 
+  // TODO: Bookmark: runJob 5
   private def runJob(data: ResponsePendingData) = {
     val backendJobExecutionActor = createBackendJobExecutionActor(data)
     backendJobExecutionActor ! command

@@ -12,6 +12,7 @@ object CromwellApp extends App {
   def runCromwell(args: CommandLineArguments): Unit = {
     args.command match {
       case Some(Run) => CromwellEntryPoint.runSingle(args)
+      // TODO: Bookmark: runServer 0
       case Some(Server) => CromwellEntryPoint.runServer()
       case Some(Submit) => CromwellEntryPoint.submitToServer(args)
       case None => showUsageAndExitWithError()

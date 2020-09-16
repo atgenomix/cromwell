@@ -188,6 +188,7 @@ case class WorkflowExecutionActor(params: WorkflowExecutionActorParams)
   // Most of the Event handling is common to all states, so put it here. Specific behavior is added / overridden in each state
   whenUnhandled {
     case Event(ExecutionHeartBeat, data) if data.executionStore.needsUpdate =>
+      // TODO: Bookmark: runJob 1
       val newData = startRunnableNodes(data)
       sendHeartBeat()
       stay() using newData
@@ -530,6 +531,7 @@ case class WorkflowExecutionActor(params: WorkflowExecutionActorParams)
     })
 
     val keyStartDiffs: List[WorkflowExecutionDiff] = runnableKeys map { k => k -> (k match {
+      // TODO: Bookmark: runJob 2
       case key: BackendJobDescriptorKey => processRunnableJob(key, data)
       case key: SubWorkflowKey => processRunnableSubWorkflow(key, data)
       case key: ConditionalCollectorKey => key.processRunnable(data)
@@ -657,6 +659,7 @@ case class WorkflowExecutionActor(params: WorkflowExecutionActorParams)
     val ejeaRef = context.actorOf(ejeaProps, ejeaName)
     context watch ejeaRef
     pushNewCallMetadata(jobKey, Option(backendName), serviceRegistryActor)
+    // TODO: Bookmark: runJob 3
     ejeaRef ! EngineJobExecutionActor.Execute
 
     WorkflowExecutionDiff(

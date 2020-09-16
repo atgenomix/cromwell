@@ -48,7 +48,9 @@ final case class WorkflowStoreActor private(
 
   override def receive = {
     case ShutdownCommand => waitForActorsAndShutdown(NonEmptyList.of(workflowStoreSubmitActor, workflowStoreEngineActor))
+    // TODO: Bookmark: receive API submit 0
     case cmd: WorkflowStoreActorSubmitCommand => workflowStoreSubmitActor forward cmd
+    // TODO: Bookmark: try to fetch workflow 1
     case cmd: WorkflowStoreActorEngineCommand => workflowStoreEngineActor forward cmd
     case cmd: WorkflowStoreWriteHeartbeatCommand => workflowStoreHeartbeatWriteActor forward cmd
     case GetWorkflowStoreStats =>

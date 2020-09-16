@@ -18,6 +18,7 @@ import scala.util.{Failure, Success}
 object CromwellServer {
   def run(gracefulShutdown: Boolean, abortJobsOnTerminate: Boolean)(cromwellSystem: CromwellSystem): Future[Any] = {
     implicit val actorSystem = cromwellSystem.actorSystem
+    // TODO: Bookmark: runServer 1
     actorSystem.actorOf(CromwellServerActor.props(cromwellSystem, gracefulShutdown, abortJobsOnTerminate), "cromwell-service")
     actorSystem.whenTerminated
   }

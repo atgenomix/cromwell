@@ -92,6 +92,7 @@ case class WorkflowInitializationActor(workflowIdForLogging: PossiblyNotRootWork
   private var backendActorsAndBackends: Traversable[BackendActorAndBackend] = _
 
   when(InitializationPendingState) {
+    // TODO: Bookmark: workflow initialize 1
     case Event(StartInitializationCommand, _) =>
       val backendInitializationActors = Try {
         for {

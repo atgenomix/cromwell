@@ -168,6 +168,7 @@ class MaterializeWorkflowDescriptorActor(serviceRegistryActor: ActorRef,
         case (workflowOptions, pathBuilders) =>
           val futureDescriptor: Future[ErrorOr[EngineWorkflowDescriptor]] = pathBuilders flatMap { pb =>
             val engineIoFunctions = new EngineIoFunctions(pb, new AsyncIo(ioActorProxy, GcsBatchCommandBuilder), iOExecutionContext)
+            // TODO: Bookmark: Materialize, parsing workflow
             buildWorkflowDescriptor(
               workflowId,
               workflowSourceFiles,
@@ -294,6 +295,7 @@ class MaterializeWorkflowDescriptorActor(serviceRegistryActor: ActorRef,
       validatedNamespace <- buildValidatedNamespace(factory, sourceAndResolvers._1, sourceAndResolvers._2)
       closeResult = sourceAndResolvers._2.traverse(_.cleanupIfNecessary())
       _ = pushNamespaceMetadata(validatedNamespace)
+      // TODO: Bookmark: call backend
       ewd <- buildWorkflowDescriptor(id, validatedNamespace, workflowOptions, labels, conf, callCachingEnabled,
         invalidateBadCacheResults, pathBuilders, outputRuntimeExtractor).toIOChecked
     } yield {
@@ -385,6 +387,7 @@ class MaterializeWorkflowDescriptorActor(serviceRegistryActor: ActorRef,
     val defaultBackendName = conf.as[Option[String]]("backend.default")
 
     val failureModeValidation = validateWorkflowFailureMode(workflowOptions, conf)
+    // TODO: Bookmark: Call-to-Backend
     val backendAssignmentsValidation = validateBackendAssignments(taskCalls, workflowOptions, defaultBackendName)
 
     val callCachingModeValidation = validateCallCachingMode(workflowOptions, callCachingEnabled,
@@ -407,6 +410,7 @@ class MaterializeWorkflowDescriptorActor(serviceRegistryActor: ActorRef,
           defaultBackendName
         )
 
+        // TODO: 可以動手腳讓不同 task 送 不同 backend
         backendPriorities.flatten.headOption match {
           case Some(backendName) if cromwellBackends.isValidBackendName(backendName) => call -> backendName
           case Some(backendName) => throw new Exception(s"Backend for call ${call.fullyQualifiedName} ('$backendName') not registered in configuration file")
